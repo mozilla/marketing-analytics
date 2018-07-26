@@ -1,51 +1,66 @@
--- Calculate install rate for mozilla.org funnel
--- Downloads from GA, installs from telemetry
-
-WITH installRate AS(
+WITH fetchSpend AS(
 SELECT
-downloads.date,
-downloads.nonFXDownloads,
-installs.installs,
-installs.installs/downloads.nonFXDownloads as installRate
-FROM(
+*
+FROM (
 
--- Calculate downloads
 (SELECT
-  date as date,
-  SUM(IF(downloads > 0,1,0)) as downloads,
-  SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as nonFXDownloads
-FROM (SELECT
-  date AS date,
-  fullVisitorId as visitorId,
-  visitNumber as visitNumber,
-  trafficSource.source as source,
-  device.browser as browser,
-  SUM(IF (hits.eventInfo.eventAction = "Firefox Download",1,0)) as downloads
-FROM
-  `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
-  UNNEST (hits) AS hits
+      Created,
+      AdName as AdNameTrafficking,
+      TrackingLink,
+      Product,
+      Campaign,
+      Vendor,
+      Country,
+      OperatingSystem,
+      Device,
+      Channel,
+      CreativeType,
+      Targeting,
+      Creative,
+      CreativeSize,
+      CreativeConcept,
+      CreativeLanguage,
+      TrafficType,
+      Tracking,
+      Goal,
+      MediaType,
+      Placement,
+      SocialString
+FROM (
+  SELECT
+-- Select all fields
+    *,
+-- Select the most recent record uploaded to bigquery with unique date, adname & etc parameters
+    MAX(ingestedDate) OVER (PARTITION BY AdName) AS maxIngestionDate
+  FROM (
+    SELECT
+-- create column that adds the table suffix to query for aggregation
+      _table_suffix AS ingestedDate,
+      *
+    FROM
+      `ga-mozilla-org-prod-001.fetch.trafficking_*`
+-- Group by all dimensions to get unique value combinations so as to be able to partition by ingested date
+    GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23))
 WHERE
-  _TABLE_SUFFIX >= '20180101'
-  AND hits.type = 'EVENT'
-  AND hits.eventInfo.eventCategory IS NOT NULL
-  AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"
-GROUP BY
-  1,2,3,4,5)
-GROUP BY 1
-ORDER BY 1) as downloads
+  ingestedDate = maxIngestionDate) as trafficking
 
 LEFT JOIN
--- Calculate Installs
+-- Join metric / spend data to campaign information data
 (SELECT
-  submission_date_s3 AS date,
-  SUM(installs) AS installs
-FROM
-  `ga-mozilla-org-prod-001.telemetry.corpMetrics`
-WHERE funnelOrigin = 'mozFunnel'
-GROUP BY 1
-ORDER BY 1) as installs
+*
+FROM(
+SELECT
+  *,
+  MAX(ingestionDate) OVER (PARTITION BY date, Adname) AS IngestionDateMax
+FROM (
+  SELECT
+    _table_suffix AS ingestionDate,
+    *
+  FROM
+    `ga-mozilla-org-prod-001.fetch.metric_*`))
+WHERE ingestionDate = IngestionDateMax) as metric
 
-ON downloads.date = installs.date))
+ON trafficking.adNameTrafficking = metric.Adname))
 
-SELECT * FROM installRate
-ORDER BY 1
+SELECT * FROM fetchSpend
+WHERE date

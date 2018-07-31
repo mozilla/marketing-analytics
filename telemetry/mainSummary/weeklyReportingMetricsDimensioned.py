@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.types import IntegerType, DateType, StringType
 from datetime import timedelta, datetime
+from pyspark.sql.functions import lit
 import pandas as pd
 
 
@@ -9,12 +10,12 @@ import pandas as pd
 #TODO: Add Dimensionality to metrics and maintain integrity (split this up to multiple tasks once ready to start)
 #TODO: When adding country and attribution dimensions, getting a few additional DAU, ADAU etc. Figure out how to maintain totals as dimensions increase
 
-# Connect to Main Summary & New Profiles Tables
+# 1 Connect to Main Summary & New Profiles Tables
 spark = SparkSession.builder.appName('mainSummary').getOrCreate()
 mainSummaryTable = spark.read.option('mergeSchema', 'true').parquet('s3://telemetry-parquet/main_summary/v4/')
 newProfilesTable = spark.read.option('mergeSchema', 'true').parquet('s3://net-mozaws-prod-us-west-2-pipeline-data/telemetry-new-profile-parquet/v2/')
 
-# Reduce Main Summary to columns of interest and store in new dataframe
+# 1a Reduce Main Summary to columns of interest and store in new dataframe
 mkgDimensionColumns = ['submission_date_s3',
                        'profile_creation_date',
                        'install_year',
@@ -40,8 +41,8 @@ mkgDimensionColumns = ['submission_date_s3',
 
 mkgMainSummary = mainSummaryTable.select(mkgDimensionColumns)
 
-# Calculate Searches
-## Function for getting search counts (per jupyter notebook from Su-Young Hong)
+# 2 Calculate Searches
+# 2a Function for getting search counts (per jupyter notebook from Su-Young Hong)
 
 searchSources = ['urlbar', 'searchbar', 'abouthome', 'newtab', 'contextmenu', 'system', 'activitystream']
 
@@ -58,12 +59,38 @@ returnSchema = IntegerType()
 spark.udf.register('get_searches', get_searches, returnSchema)
 get_searches_udf = udf(lambda search: get_searches(search), returnSchema)
 
-## Calculate number of searches and append to mkgMainSummary data frame
+# 2b Calculate number of searches and append to mkgMainSummary data frame
 mkgMainSummary = mkgMainSummary.withColumn('numberSearches', get_searches_udf(col('search_counts'))).drop(col('search_counts'))
 
-# Aggregate total pageviews by client ID
+# 2c Aggregate total pageviews by client ID
 aggPageviews = mkgMainSummary.groupBy('submission_date_s3', 'client_id', 'source', 'medium', 'campaign', 'content', 'country').agg(sum(mkgMainSummary.scalar_parent_browser_engagement_total_uri_count).alias('totalURI'),
                                                                              sum(mkgMainSummary.numberSearches).alias('searches'))
+
+# 3 Find all current year acquisitions
+currentYearAcquisitions = newProfilesTable.select('submission', 'client_id')
+# TODO: Due to this dimension build, need to figure out how to feed the year based off of the inputs from
+currentYearAcquisitions = currentYearAcquisitions.filter("submission >= '20180101'")
+currentYearAcquisitions = currentYearAcquisitions.withColumn('acqSegment', lit('new'))
+
+# ToDO: filter dates for main summary prior to join to speed up join
+
+aggPageviews = aggPageviews.filter("submission_date_s3 >= '20180715' AND submission_date_s3 <= '20180721'")
+
+# 4 Determine current users who are new (acquired in current year) vs existing (acquired prior to current year)
+# 4a Join currentYearAcquisitions to aggPageviews
+aggPageviews = aggPageviews.alias('aggPageviews')
+currentYearAcquisitions = currentYearAcquisitions.alias('currentYearAcquisitions')
+joinedData = aggPageviews.join(currentYearAcquisitions, col('aggPageviews.client_id') == col('currentYearAcquisitions.client_id'), 'left')
+
+# 4b In joined data convert nulls to existing for column acqSegment
+joinedData = joinedData.withColumn('acqSegment', when(joinedData.acqSegment.isNull(), 'existing').otherwise('new'))
+
+
+
+
+
+
+
 
 #TODO: When ready to operationalize and don't need all historic data -> filter mainSummaryTable to speed up processing
 

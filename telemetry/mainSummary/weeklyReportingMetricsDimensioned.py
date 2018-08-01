@@ -13,7 +13,7 @@ import pandas as pd
 # 1 Connect to Main Summary & New Profiles Tables
 spark = SparkSession.builder.appName('mainSummary').getOrCreate()
 mainSummaryTable = spark.read.option('mergeSchema', 'true').parquet('s3://telemetry-parquet/main_summary/v4/')
-newProfilesTable = spark.read.option('mergeSchema', 'true').parquet('s3://net-mozaws-prod-us-west-2-pipeline-data/telemetry-new-profile-parquet/v2/')
+
 
 # 1a Reduce Main Summary to columns of interest and store in new dataframe
 mkgDimensionColumns = ['submission_date_s3',

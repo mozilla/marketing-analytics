@@ -11,9 +11,12 @@ import pandas as pd
 #TODO: Validate fx 55+ by comparing to new profiles and first shutdown - to understand differences
 
 # 1 Connect to Main Summary & New Profiles / Installs Table
+print("connecting to tables")
+
 spark = SparkSession.builder.appName('mainSummary').getOrCreate()
 mainSummaryTable = spark.read.option('mergeSchema', 'true').parquet('s3://telemetry-parquet/main_summary/v4/')
 newProfilesTable = spark.read.option('mergeSchema', 'true').parquet('s3://net-mozaws-prod-us-west-2-pipeline-data/telemetry-new-profile-parquet/v2/')
+firstShutdownTable = spark.read.option('mergeSchema', 'true').parquet('s3://telemetry-parquet/first_shutdown_summary/v4/')
 
 # 1a Reduce Main Summary to columns of interest and store in new dataframe
 columns = ['submission_date_s3',
@@ -43,15 +46,16 @@ columns = ['submission_date_s3',
 
 
 # Retrieve Data in Chunks
-startPeriod = datetime(year=2018, month=6, day=26)
-endPeriod = datetime(year=2018, month=7, day=2)
+startPeriod = datetime(year=2018, month=6, day=1)
+endPeriod = datetime(year=2018, month=7, day=31)
 period = endPeriod - startPeriod
 
-if period.days <= 15:
+if period.days <= 7:
     startPeriodString = startPeriod.strftime("%Y%m%d")
     endPeriodString = endPeriod.strftime("%Y%m%d")
 
     #1b Create & filter mkgmainsummary and select desired fields
+    print('starting loop')
     mkgMainSummary = mainSummaryTable.filter("submission_date_s3 >= '{}' AND submission_date_s3 <= '{}'".format(startPeriodString, endPeriodString)).select(columns)
 
     # 2 Aggregate total pageviews by client ID
@@ -98,9 +102,10 @@ if period.days <= 15:
     metrics.coalesce(1).write.option("header", "true").csv(
         's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retention{}-{}.csv'.format(
             startPeriodString, endPeriodString))
+    print("{}-{} completed and saved".format(startPeriodString, endPeriodString))
 
 else:
-    dayChunks = timedelta(days=15)
+    dayChunks = timedelta(days=7)
     currentPeriodStart = startPeriod
     currentPeriodEnd = startPeriod + dayChunks
     currentPeriodChunk = endPeriod - currentPeriodEnd
@@ -110,6 +115,7 @@ else:
         endPeriodString = currentPeriodEnd.strftime("%Y%m%d")
 
         # 1b Create & filter mkgmainsummary and select desired fields
+        print('starting loop')
         mkgMainSummary = mainSummaryTable.filter(
             "submission_date_s3 >= '{}' AND submission_date_s3 <= '{}'".format(startPeriodString,
                                                                                endPeriodString)).select(columns)
@@ -167,6 +173,9 @@ else:
             's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retention{}-{}.csv'.format(
                 startPeriodString, endPeriodString))
 
+        print("{}-{} completed and saved".format(startPeriodString, endPeriodString))
+        print('starting next loop')
+
         #8 Set new dates for next loop
         currentPeriodStart = currentPeriodEnd + timedelta(days=1)
         currentPeriodEnd = currentPeriodStart + dayChunks
@@ -182,5 +191,7 @@ installs.coalesce(1).write.option("header", "true").csv('s3://net-mozaws-prod-us
 
 
 # TODO Graveyeard - Clean before pushing to cluster
-#aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs2018.csv /home/hadoop/sparkAnalysis/retention/dailyRetention
+#aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention /home/hadoop/sparkAnalysis/retention/dailyRetention
 #rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention
+
+#rsync -av /Users/gkaberere/Google\ Drive/Github/marketing-analytics/telemetry gkabbz-001:/home/hadoop/sparkAnalysis/mAnalytics/telemetryQueries

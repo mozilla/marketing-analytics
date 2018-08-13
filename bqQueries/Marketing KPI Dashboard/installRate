@@ -4,6 +4,7 @@
 WITH installRate AS(
 SELECT
 downloads.date,
+downloads.downloads,
 downloads.nonFXDownloads,
 installs.installs,
 installs.installs/downloads.nonFXDownloads as installRate

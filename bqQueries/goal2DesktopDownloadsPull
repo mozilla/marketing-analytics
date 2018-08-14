@@ -29,7 +29,6 @@ GROUP BY
 GROUP BY 1
 ORDER BY 1
 
-
 -- General Downloads Pull
 SELECT
   date as date,

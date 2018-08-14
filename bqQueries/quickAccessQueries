@@ -4,6 +4,7 @@
     FORMAT_DATE('%Y%m%d', downloadDate) -- Convert date stored as date to string
     FORMAT_DATE("%Y%m",PARSE_DATE("%Y%m%d",acquisitionDate)) IN ("201712", "201801")  -- combining the two for custom requests
     EXTRACT(Date FROM submission_date_s3) -- Pulling date from a timestamp. Also works for month, year etc.
+    FORMAT_DATE('%Y%m%d', CURRENT_DATE()) -- converting current date to string
 
     -- Rounding
     ROUND(SUM(VendorNetSpend),2) AS vendorNetSpend -- Round to two decimal places. Nothing after , = round to integer

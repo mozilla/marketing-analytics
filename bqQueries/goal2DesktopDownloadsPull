@@ -1,4 +1,6 @@
-SELECT 
+-- Downloads By landing page
+
+SELECT
   date as date,
   SUM(IF(downloads > 0,1,0)) as downloads,
   SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as nonFXDownloads
@@ -51,4 +53,3 @@ GROUP BY
   1,2,3,4,5)
 GROUP BY 1
 ORDER BY 1
-

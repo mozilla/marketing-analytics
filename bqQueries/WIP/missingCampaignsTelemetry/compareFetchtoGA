@@ -50,3 +50,4 @@ ORDER BY 2 DESC) as GA
 ON fetchData.Adname = GA.content))
 
 SELECT * FROM data
+

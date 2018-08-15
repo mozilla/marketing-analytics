@@ -1,6 +1,8 @@
 WITH data as(
 SELECT
 fetchData.Adname as fetchAdName,
+adDetails.Device as device,
+adDetails.OperatingSystem as OperatingSystem,
 fetchData.vendorNetSpend as vendorNetSpend,
 fetchData.downloadsGA as fetchDownloadsGA,
 GA.content as gaContent,
@@ -47,7 +49,26 @@ GROUP BY
 GROUP BY 1
 ORDER BY 2 DESC) as GA
 
-ON fetchData.Adname = GA.content))
+ON fetchData.Adname = GA.content
+
+LEFT JOIN
+
+(SELECT
+  Adname,
+  Device,
+  OperatingSystem
+FROM
+  `ga-mozilla-org-prod-001.fetch.fetch_deduped`
+WHERE
+  Date >= '2018-06-01'
+  AND DATE <= '2018-06-30'
+GROUP BY
+  1,2,3
+ORDER BY 2 DESC) as adDetails
+
+ON fetchData.Adname = adDetails.Adname))
 
 SELECT * FROM data
-
+WHERE gaContent IS NULL
+AND device = 'Desktop'
+ORDER BY vendorNetSpend DESC

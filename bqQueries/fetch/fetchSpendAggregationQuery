@@ -1,9 +1,4 @@
-WITH fetchSpend AS(
-SELECT
-*
-FROM (
-
-(SELECT
+select * from (SELECT
       Created,
       AdName as AdNameTrafficking,
       TrackingLink,
@@ -26,24 +21,7 @@ FROM (
       MediaType,
       Placement,
       SocialString
-FROM (
-  SELECT
--- Select all fields
-    *,
--- Select the most recent record uploaded to bigquery with unique date, adname & etc parameters
-    MAX(ingestedDate) OVER (PARTITION BY AdName) AS maxIngestionDate
-  FROM (
-    SELECT
--- create column that adds the table suffix to query for aggregation
-      _table_suffix AS ingestedDate,
-      *
-    FROM
-      `ga-mozilla-org-prod-001.fetch.trafficking_*`
--- Group by all dimensions to get unique value combinations so as to be able to partition by ingested date
-    GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23))
-WHERE
-  ingestedDate = maxIngestionDate) as trafficking
-
+FROM `ga-mozilla-org-prod-001.fetch.trafficking`) as trafficking
 LEFT JOIN
 -- Join metric / spend data to campaign information data
 (SELECT
@@ -59,8 +37,4 @@ FROM (
   FROM
     `ga-mozilla-org-prod-001.fetch.metric_*`))
 WHERE ingestionDate = IngestionDateMax) as metric
-
-ON trafficking.adNameTrafficking = metric.Adname))
-
-SELECT * FROM fetchSpend
-WHERE date
+ON trafficking.AdNameTrafficking = metric.Adname

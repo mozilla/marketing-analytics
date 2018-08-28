@@ -46,8 +46,8 @@ columns = ['submission_date_s3',
 
 
 # Retrieve Data in Chunks
-startPeriod = datetime(year=2018, month=6, day=1)
-endPeriod = datetime(year=2018, month=7, day=31)
+startPeriod = datetime(year=2018, month=8, day=1)
+endPeriod = datetime(year=2018, month=8, day=19)
 period = endPeriod - startPeriod
 
 if period.days <= 7:
@@ -99,7 +99,7 @@ if period.days <= 7:
                                                                                               sum(joinedData.totalURI).alias('totalURI'))
 
     #7 Write file
-    metrics.coalesce(1).write.option("header", "true").csv(
+    metrics.coalesce(1).write.option("header", "false").csv(
         's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retention{}-{}.csv'.format(
             startPeriodString, endPeriodString))
     print("{}-{} completed and saved".format(startPeriodString, endPeriodString))
@@ -169,7 +169,7 @@ else:
             sum(joinedData.totalURI).alias('totalURI'))
 
         # 7 Write file
-        metrics.coalesce(1).write.option("header", "true").csv(
+        metrics.coalesce(1).write.option("header", "false").csv(
             's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retention{}-{}.csv'.format(
                 startPeriodString, endPeriodString))
 
@@ -187,7 +187,7 @@ else:
 
 #9 Summarize installs per day from new profiles table and write to csv
 installs = currentYearAcquisitions.groupBy('installDate').agg(countDistinct(currentYearAcquisitions.np_clientID).alias('installs'))
-installs.coalesce(1).write.option("header", "true").csv('s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs{}.csv'.format(endPeriodString))
+installs.coalesce(1).write.option("header", "false").csv('s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs{}.csv'.format(endPeriodString))
 
 
 # TODO Graveyeard - Clean before pushing to cluster

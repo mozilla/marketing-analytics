@@ -1,7 +1,7 @@
 -- Calculate install rate for mozilla.org funnel
 -- Downloads from GA, installs from telemetry
 
-WITH installRate AS(
+WITH acqByDate AS(
 SELECT
 downloads.date,
 downloads.downloads,
@@ -26,7 +26,7 @@ FROM
   `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
   UNNEST (hits) AS hits
 WHERE
-  _TABLE_SUFFIX >= '20180101'
+  _TABLE_SUFFIX >= '20170101'
   AND hits.type = 'EVENT'
   AND hits.eventInfo.eventCategory IS NOT NULL
   AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"
@@ -48,5 +48,5 @@ ORDER BY 1) as installs
 
 ON downloads.date = installs.date))
 
-SELECT * FROM installRate
+SELECT * FROM acqByDate
 ORDER BY 1

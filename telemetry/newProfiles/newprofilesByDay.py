@@ -11,3 +11,6 @@ metrics.coalesce(1).write.option("header", "true").csv('s3://net-mozaws-prod-us-
 
 
 metrics = metrics.groupBy('submission').agg(countDistinct(metrics.client_id).alias('installsNewProfiles'))
+
+    #aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/installsSep3-8b.csv /home/hadoop/sparkAnalysis/newProfiles/installsSep3-8b
+#rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/newProfiles/installsSep3-8 /Users/gkaberere/spark-warehouse/newProfiles

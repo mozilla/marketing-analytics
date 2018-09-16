@@ -195,3 +195,7 @@ installs.coalesce(1).write.option("header", "false").csv('s3://net-mozaws-prod-u
 #rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention
 
 #rsync -av /Users/gkaberere/Google\ Drive/Github/marketing-analytics/telemetry gkabbz-001:/home/hadoop/sparkAnalysis/mAnalytics/telemetryQueries
+
+#for pulling down the installs summary from 9 above
+#aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs20180826.csv /home/hadoop/sparkAnalysis/retention/dailyRetention/v2
+#rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention/v2

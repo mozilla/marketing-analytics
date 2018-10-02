@@ -1,0 +1,1 @@
+Saving all queries that aren't deemed essential as adHOC. If not required by Jan 1, 2019, the folder can be deleted

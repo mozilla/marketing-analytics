@@ -1,0 +1,30 @@
+WITH data as(
+SELECT
+dailyRetention.submission_date_s3,
+dailyRetention.installDate,
+dailyRetention.daysRetained,
+dailyRetention.acqSegment,
+dailyRetention.DAU,
+dailyRetention.activeDAU,
+dailyRetention.totalURI,
+installs.installs,
+CASE WHEN daysRetained < 0 THEN 'existing' else acqSegment END as acqSegmentCleaned,
+SAFE_DIVIDE(dailyRetention.DAU,installs.installs) as retention
+
+FROM(
+(SELECT * FROM `telemetry.dailyRetentionv1`) as dailyRetention
+
+LEFT JOIN
+
+(SELECT submission_date_s3, SUM(installs) as installs FROM `telemetry.corpMetrics` GROUP BY 1) as installs
+
+ON dailyRetention.installDate = installs.submission_date_s3
+))
+
+SELECT * from data
+ORDER BY submission_date_s3
+
+
+
+#aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs20180826.csv /home/hadoop/sparkAnalysis/retention/dailyRetention/v2
+#rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention/v2

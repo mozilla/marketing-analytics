@@ -119,7 +119,7 @@ if period.days <= 30:
                                (metrics.medium == installs.npMedium) & (metrics.campaign == installs.npCampaign) &
                                (metrics.content == installs.npContent) & (metrics.country == installs.geo_country),
                                'left')
-    # metricsJoin = metricsJoin.drop('submission', 'npSource', 'npMedium', 'npCampaign', 'npContent', 'geo_country')
+    metricsJoin = metricsJoin.drop('submission', 'npSource', 'npMedium', 'npCampaign', 'npContent', 'geo_country')
 
     # Write File
     metricsJoin.coalesce(1).write.option("header", "true").csv(

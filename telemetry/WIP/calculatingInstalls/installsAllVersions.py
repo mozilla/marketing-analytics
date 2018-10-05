@@ -25,6 +25,9 @@ newProfilesTable = spark.read.option('mergeSchema', 'true').parquet('s3://net-mo
 firstRunTable = spark.read.option('mergeSchema', 'true').parquet('s3://telemetry-parquet/first_shutdown_summary/v4/')
 
 #1b Select columns of interest
+newProfilesColumns = ['submission',
+                      'client_id'
+                      ]
 mainSummaryColumns = ['submission_date_s3',
                       'profile_creation_date',
                       'install_year',
@@ -42,13 +45,6 @@ mainSummaryColumns = ['submission_date_s3',
                       'attribution.content',
                       'scalar_parent_browser_engagement_total_uri_count'
                        ]
-
-newProfilesColumns = ['submission',
-                      'client_id',
-                      'geo_country',
-                      'geo_city',
-                      'geo_subdivision1',
-                      ]
 
 
 

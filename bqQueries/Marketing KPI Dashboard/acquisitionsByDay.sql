@@ -4,12 +4,13 @@
 WITH acqByDate AS(
 SELECT
 downloads.date,
-downloads.downloads,
-downloads.nonFXDownloads,
-downloads.windowsDownloads,
-downloads.windowsNonFXDownloads,
-installs.installs,
-installs.installs/downloads.windowsNonFXDownloads as installRate
+downloads.downloads as downloads,
+downloads.nonFXDownloads as nonFXDownloads,
+downloads.windowsDownloads as windowsDownloads,
+downloads.windowsNonFXDownloads as windowsNonFXDownloads,
+SUM(installs.installs) as totalInstalls,
+SUM(CASE WHEN installs.funnelOrigin = 'mozFunnel' THEN installs.installs ELSE 0 END) as mozFunnelInstalls,
+SUM(CASE WHEN installs.funnelOrigin = 'darkFunnel' THEN installs.installs ELSE 0 END) as darkFunnelInstalls
 FROM(
 
 -- Calculate downloads
@@ -41,17 +42,23 @@ GROUP BY 1
 ORDER BY 1) as downloads
 
 LEFT JOIN
--- Calculate Installs
+-- Calculate Installs By Funnel
 (SELECT
   submission_date_s3 AS date,
+  funnelOrigin,
   SUM(installs) AS installs
 FROM
   `ga-mozilla-org-prod-001.telemetry.corpMetrics`
-WHERE funnelOrigin = 'mozFunnel'
-GROUP BY 1
-ORDER BY 1) as installs
+GROUP BY 1,2
+ORDER BY 1,2) as installs
 
-ON downloads.date = installs.date))
+ON downloads.date = installs.date)
+GROUP BY 1,2,3,4,5)
 
-SELECT * FROM acqByDate
+
+SELECT
+*,
+CASE WHEN windowsNonFXDownloads <= 0 THEN 0 ELSE mozFunnelInstalls/windowsNonFXDownloads END as installRate
+FROM acqByDate
+WHERE date >= '20170101'
 ORDER BY 1

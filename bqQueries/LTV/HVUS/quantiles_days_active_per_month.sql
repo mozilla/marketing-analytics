@@ -8,7 +8,7 @@ WITH
       clients.max_activity_date,
       clients.profile_creation_date,
       clients.profile_age_in_days,
-      clients.days_active,
+      additional_user_metrics.days_active,
       CASE
         WHEN DATE_DIFF(parse_DATE('%Y-%m-%d',  max_activity_date), parse_DATE('%Y-%m-%d',  profile_creation_date), MONTH) = 0 THEN 0
         ELSE days_active / DATE_DIFF(parse_DATE('%Y-%m-%d',
@@ -73,10 +73,13 @@ WITH
     SELECT
       country,
       ROUND(COUNT(client_id) * (SELECT correction FROM pull_delta) * 100, 0) AS num_clients,
-      ROUND(approx_quantiles(days_active_per_month, 20)[offset(15)], 2) AS q80_active_days_per_month,
-      ROUND(approx_quantiles(days_active_per_month, 20)[offset(17)], 2) AS q90_active_days_per_month,
-      ROUND(approx_quantiles(days_active_per_month, 20)[offset(18)], 2) AS q95_active_days_per_month,
-      ROUND(SUM(predicted_clv_12_months) * (SELECT correction FROM pull_delta) * 100, 0) AS sum_predicted_ltv_12_months
+      ROUND(approx_quantiles(days_active_per_month, 20)[offset(14)], 2) AS q75_days_active_per_month,
+      ROUND(approx_quantiles(days_active_per_month, 20)[offset(15)], 2) AS q80_days_active_per_month,
+      ROUND(approx_quantiles(days_active_per_month, 20)[offset(17)], 2) AS q90_days_active_per_month,
+      ROUND(approx_quantiles(days_active_per_month, 20)[offset(18)], 2) AS q95_days_active_per_month,
+      ROUND(SUM(predicted_clv_12_months) * (SELECT correction FROM pull_delta) * 100, 0) AS sum_predicted_ltv_12_months,
+      AVG(days_active_per_month) AS avg_days_active_per_month,
+      SUM(days_active_per_month) AS sum_days_active_per_month
     FROM
       active_clients
     GROUP BY
@@ -85,14 +88,14 @@ WITH
       country
   )
 
-SELECT * FROM quantiles
+-- SELECT * FROM quantiles
 
-/*
 SELECT
   quantiles.country,
   ROUND(COUNT(active_clients.client_id) * (SELECT correction FROM pull_delta) * 100, 2) AS num_clients,
-
-  ROUND(SUM(active_clients.predicted_clv_12_months) * (SELECT correction FROM pull_delta) * 100, 2) AS sum_pLTV
+  ROUND(SUM(active_clients.predicted_clv_12_months) * (SELECT correction FROM pull_delta) * 100, 2) AS sum_pLTV,
+  AVG(active_clients.days_active_per_month) AS avg_days_active_per_month,
+  SUM(active_clients.days_active_per_month) AS sum_days_active_per_month
 FROM
   quantiles
 LEFT JOIN
@@ -100,9 +103,8 @@ LEFT JOIN
 ON
   quantiles.country = active_clients.country
 WHERE
-  active_clients.active_days_per_month <= quantiles.active_days_per_month
+  active_clients.days_active_per_month >= quantiles.q75_days_active_per_month
 GROUP BY
   country
 ORDER BY
   country
-*/

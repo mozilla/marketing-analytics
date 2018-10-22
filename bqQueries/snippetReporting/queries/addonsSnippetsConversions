@@ -1,0 +1,14 @@
+SELECT
+  date as date,
+  trafficSource.keyword as snippetID,
+  --geoNetwork.country as country,
+  hits.eventInfo.eventCategory  as eventCategory,
+  hits.eventInfo.eventAction as eventAction,
+  hits.eventInfo.eventLabel as eventLabel,
+  SUM(totals.visits) AS sessions
+FROM
+  `ga-mozilla-org-prod-001.67693596.ga_sessions_20181014`, UNNEST (hits) as hits
+WHERE
+  trafficSource.medium = 'snippet'
+GROUP By 1,2,3,4,5
+ORDER BY 5 DESC

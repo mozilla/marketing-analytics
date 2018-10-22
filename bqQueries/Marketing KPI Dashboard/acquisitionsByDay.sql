@@ -9,7 +9,7 @@ downloads.nonFXDownloads as nonFXDownloads,
 downloads.windowsDownloads as windowsDownloads,
 downloads.windowsNonFXDownloads as windowsNonFXDownloads,
 SUM(installs.installs) as totalInstalls,
-SUM(CASE WHEN installs.funnelOrigin = 'mozFunnel' THEN installs.installs ELSE 0 END) as mozFunnelInstalls,
+SUM(CASE WHEN installs.funnelOrigin = 'mozFunnel' THEN installs.installs ELSE 0 END) as mktgAttrInstalls,
 SUM(CASE WHEN installs.funnelOrigin = 'darkFunnel' THEN installs.installs ELSE 0 END) as darkFunnelInstalls
 FROM(
 
@@ -58,7 +58,7 @@ GROUP BY 1,2,3,4,5)
 
 SELECT
 *,
-CASE WHEN windowsNonFXDownloads <= 0 THEN 0 ELSE mozFunnelInstalls/windowsNonFXDownloads END as installRate
+CASE WHEN windowsNonFXDownloads <= 0 THEN 0 ELSE mktgAttrInstalls/windowsNonFXDownloads END as installRate
 FROM acqByDate
 WHERE date >= '20170101'
 ORDER BY 1

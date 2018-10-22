@@ -14,10 +14,10 @@ FROM
 GROUP By 1,2
 
 UNION ALL
--- Select metrics by moz funnel and dark funnel
+-- Select metrics by mktg Attr funnel and dark funnel
   SELECT
   submission_date_s3 AS submissionDate,
-  funnelOrigin AS funnelOrigin,
+  CASE WHEN funnelOrigin = 'mozFunnel' THEN 'mktgAttrFunnel' ELSE funnelOrigin END AS funnelOrigin,
   sum(DAU) as DAU,
   sum(activeDAU) as aDAU,
   sum(installs) as installs,
@@ -43,7 +43,7 @@ UNION ALL
 -- Select metrics and create a funnel for marketing attributable
 SELECT
   submission_date_s3 AS submissionDate,
-  'mktgAttrFunnel' AS funnelOrigin,
+  'mktgAdvertisingFunnel' AS funnelOrigin,
   sum(DAU) as DAU,
   sum(activeDAU) as aDAU,
   sum(installs) as installs,

@@ -8,7 +8,7 @@ with
       date,
       vendor,
       adname,
-      REGEXP_EXTRACT(socialstring, r'(.*)_') AS socialstring,
+      socialstring,
       country,
       targeting,
       vendornetspend,

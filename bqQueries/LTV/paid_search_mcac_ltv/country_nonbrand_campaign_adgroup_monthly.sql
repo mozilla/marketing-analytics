@@ -8,7 +8,7 @@ with
       date,
       vendor,
       adname,
-      REGEXP_EXTRACT(socialstring, r'(.*)_') AS socialstring,
+      socialstring,
       country,
       targeting,
       vendornetspend,
@@ -20,7 +20,7 @@ with
       AND country IN ('United States', 'Canada', 'Germany')
       AND targeting = 'Nonbrand Search'
       AND vendornetspend > 0
-      AND date BETWEEN DATE(2018, 10, 1) AND DATE(2018, 12, 31)
+      AND date BETWEEN DATE(2018, 7, 1) AND DATE(2018, 12, 31)
   ),
 
   -- Join Fetch with LTV based on source, medium, campaign, and content
@@ -62,6 +62,7 @@ with
 SELECT
   spending.country,
   spending.targeting,
+  spending.month_num,
   spending.socialstring,
   spending.vendor,
   spending.sum_vendornetspend,
@@ -81,6 +82,7 @@ SELECT
 FROM (
   -- group aggregations by week, country, targeting, and socialstring
   SELECT
+    EXTRACT(month FROM date) AS month_num,
     f.country,
     f.targeting,
     f.socialstring,
@@ -99,6 +101,7 @@ FROM (
   FROM
     nonbranded_search_spend AS f
   GROUP BY
+    month_num,
     f.country,
     f.targeting,
     f.socialstring,
@@ -113,7 +116,7 @@ ON
   AND spending.vendor = ltv_attribution.vendor
 ORDER BY
   spending.country,
-  spending.targeting,
-  spending.socialstring,
   spending.vendor,
-  spending.sum_vendornetspend ASC
+  spending.month_num,
+  spending.socialstring
+

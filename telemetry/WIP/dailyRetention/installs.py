@@ -193,7 +193,7 @@ installs.coalesce(1).write.option("header", "false").csv('s3://net-mozaws-prod-u
 # TODO Graveyeard - Clean before pushing to cluster
 #aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention /home/hadoop/sparkAnalysis/retention/dailyRetention
 #rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention
-#gsutil cp /Users/gkaberere/spark-warehouse/retention/dailyRetention/retention20181015-20181021.csv/retention20181015-20181021.csv gs://gkabbz-upload
+#gsutil cp /Users/gkaberere/spark-warehouse/retention/dailyRetention/retention20181126-20181202.csv/retention20181126-20181202.csv gs://gkabbz-upload
 
 #rsync -av /Users/gkaberere/Google\ Drive/Github/marketing-analytics/telemetry gkabbz-001:/home/hadoop/sparkAnalysis/mAnalytics/telemetryQueries
 

@@ -82,7 +82,7 @@ distroJoin = distroJoin.drop('submission', 'npDistributionID', 'geo_country')
 
 # Write File
 distroJoin.coalesce(1).write.option("header", "true").csv(
-        's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/adHoc/distributionIDPerf20181125-20181203.csv')
+        's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/adHoc/distributionIDPerf20181204-20181209.csv')
 
 
 #aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/adHoc /home/hadoop/sparkAnalysis/adHoc

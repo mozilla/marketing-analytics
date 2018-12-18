@@ -1,5 +1,5 @@
 SELECT
-  FORMAT_DATE('%Y', PARSE_DATE('%Y%m%d', downloadDate)) as year,
+  downloadDate,
   SUM(IF(downloads > 0,1,0)) as downloads,
   SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as nonFXDownloads
 FROM (SELECT

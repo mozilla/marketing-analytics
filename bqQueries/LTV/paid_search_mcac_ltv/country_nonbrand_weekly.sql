@@ -30,15 +30,27 @@ WITH
     `fetch.fetch_deduped`
   WHERE
     vendor IN ('Adwords', 'Bing')
-    AND country IN ('United States', 'Canada', 'Germany')
+    AND country IN (
+      -- Tier 1
+      'United States', 'Canada', 'Germany',
+      -- Tier 2
+      'United Kingdom', 'France', 'Poland', 'Australia', 'Netherlands', 'Switzerland',
+      -- Tier 3
+      'Tier 3',
+      'Argentina', 'Brazil', 'Columbia', 'Mexico', 'Peru', 'Spain', 'Venezuela',
+      'Egypt', 'Ethiopia', 'Kenya', 'Nigeria', 'South Africa',
+      'Ukraine',
+      'Saudi Arabia', 'Turkey', 'United Arab Emirates',
+      'Bangladesh', 'India', 'Indonesia', 'Malaysia', 'Pakistan', 'Philippines', 'Thailand', 'Vietnam')
     AND targeting = 'Nonbrand Search'
     AND vendornetspend > 0
-    AND date BETWEEN DATE(2018, 9, 1) AND DATE(2018, 12, 31)
+    AND date BETWEEN DATE(2018, 7, 1) AND DATE(2018, 12, 31)
   ),
 
   -- Joins with LTV data set based on source, medium, campaign, and content
   ltv_attribution AS (
   SELECT
+    EXTRACT(WEEK FROM PARSE_DATE('%Y%m%d', _TABLE_SUFFIX)) AS week_num,
     f.country,
     f.targeting,
     -- NOTE: this is only used for what seems to be an optional grouping
@@ -49,24 +61,28 @@ WITH
     COUNT(DISTINCT(ltv.client_ID)) AS n,
     AVG(ltv.total_clv) AS avg_tLTV
   FROM
-    `ltv.v1_clients_20181017` AS ltv
+    `ltv.v1_clients_*` AS ltv
   LEFT JOIN
-    `fetch.fetch_deduped` AS f
+    `fetch.latest_spending` AS f
   ON
     ltv.content = f.adname
   WHERE
-    ltv.historical_searches < (
+    f.targeting IS NOT NULL
+    AND _TABLE_SUFFIX NOT IN ('20180608', '20180917', '20181002', '20181017')
+    -- historical_searches < 5 stddevs away from mean
+    AND ltv.historical_searches < (
       SELECT
         STDDEV(historical_searches) * 5
       FROM
-        `ltv.v1_clients_20181017`
+        `ltv.v1_clients_*`
     ) + (
       SELECT
         AVG(historical_searches)
       FROM
-        `ltv.v1_clients_20181017`
+        `ltv.v1_clients_*`
     )
   GROUP BY
+    week_num,
     f.country,
     f.targeting
     -- AGroup
@@ -125,7 +141,8 @@ FROM (
 LEFT JOIN
   ltv_attribution
 ON
-  spending.country = ltv_attribution.country
+  spending.week_num = ltv_attribution.week_num
+  AND spending.country = ltv_attribution.country
   AND spending.targeting = ltv_attribution.targeting
 ORDER BY
   spending.country,

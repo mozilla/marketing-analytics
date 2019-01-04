@@ -30,7 +30,7 @@ WITH
     `fetch.fetch_deduped`
   WHERE
     vendor IN ('Adwords', 'Bing')
-    AND country IN ('United States', 'Canada', 'Germany')
+    AND country IN ('United States', 'Canada', 'Germany', 'United Kingdom', 'France', 'Poland')
     AND targeting = 'Nonbrand Search'
     AND vendornetspend > 0
     AND date BETWEEN DATE(2018, 9, 1) AND DATE(2018, 12, 31)
@@ -39,6 +39,7 @@ WITH
   -- Joins with LTV data set based on source, medium, campaign, and content
   ltv_attribution AS (
   SELECT
+    PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) AS date_of_job,
     f.country,
     f.targeting,
     -- NOTE: this is only used for what seems to be an optional grouping
@@ -49,28 +50,48 @@ WITH
     COUNT(DISTINCT(ltv.client_ID)) AS n,
     AVG(ltv.total_clv) AS avg_tLTV
   FROM
-    `ltv.v1_clients_20181017` AS ltv
+    `ltv.v1_clients_*` AS ltv
   LEFT JOIN
     `fetch.fetch_deduped` AS f
   ON
     ltv.content = f.adname
   WHERE
-    historical_searches < (
+    f.targeting IS NOT NULL
+    AND _TABLE_SUFFIX NOT IN ('20180608', '20180917', '20181002', '20181017')
+    AND ltv.historical_searches < (
       SELECT
         STDDEV(historical_searches) * 5
       FROM
-        `ltv.v1_clients_20181017`
+        `ltv.v1_clients_*`
     ) + (
       SELECT
         AVG(historical_searches)
       FROM
-        `ltv.v1_clients_20181017`
+        `ltv.v1_clients_*`
     )
   GROUP BY
+    date_of_job,
     f.country,
     f.targeting
     -- AGroup
+  ),
+
+  ltv_attribution_by_month AS (
+    SELECT
+      EXTRACT(MONTH FROM date_of_job) AS month_num,
+      country,
+      targeting,
+      MIN(n) AS min_n,
+      MAX(n) AS max_n,
+      AVG(avg_tLTV) AS avg_avg_tLTV
+    FROM
+      ltv_attribution
+    GROUP BY
+      month_num,
+      country,
+      targeting
   )
+
 
 -- Pulls whole table
 SELECT
@@ -82,14 +103,15 @@ SELECT
   spending.proj_installs,
   spending.CPD,
   spending.proj_cpi,
-  ltv_attribution.n,
-  ltv_attribution.avg_tLTV,
-  ltv_attribution.avg_tLTV * spending.proj_installs AS revenue,
-  (ltv_attribution.avg_tLTV * spending.proj_installs) - spending.sum_vendornetspend AS profit,
-  (ltv_attribution.avg_tLTV * spending.proj_installs) / spending.sum_vendornetspend AS ltv_mcac,
+  ltv_attribution_by_month.min_n,
+  ltv_attribution_by_month.max_n,
+  ltv_attribution_by_month.avg_avg_tLTV,
+  ltv_attribution_by_month.avg_avg_tLTV * spending.proj_installs AS revenue,
+  (ltv_attribution_by_month.avg_avg_tLTV * spending.proj_installs) - spending.sum_vendornetspend AS profit,
+  (ltv_attribution_by_month.avg_avg_tLTV * spending.proj_installs) / spending.sum_vendornetspend AS ltv_mcac,
   CASE
-    WHEN (ltv_attribution.avg_tLTV * spending.proj_installs) = 0 THEN 0
-    ELSE spending.sum_vendornetspend / (ltv_attribution.avg_tLTV * spending.proj_installs)
+    WHEN (ltv_attribution_by_month.avg_avg_tLTV * spending.proj_installs) = 0 THEN 0
+    ELSE spending.sum_vendornetspend / (ltv_attribution_by_month.avg_avg_tLTV * spending.proj_installs)
   END AS mcac_ltv
 FROM (
   SELECT
@@ -100,7 +122,7 @@ FROM (
     SUM(vendorNetSpend) AS sum_vendornetspend,
     -- sum(downloads) sum_downloads,
     SUM(downloadsGA) AS sum_fetchdownloads,
-    SUM(downloadsGA) *.66 AS proj_installs,
+    SUM(downloadsGA) * .66 AS proj_installs,
     CASE
     WHEN SUM(f.downloadsGA) = 0 THEN 0
       ELSE SUM(f.vendornetspend) / SUM(f.downloadsGA)
@@ -123,10 +145,11 @@ FROM (
     f.targeting
 ) AS spending
 LEFT JOIN
-  ltv_attribution
+  ltv_attribution_by_month
 ON
-  spending.country = ltv_attribution.country
-  AND spending.targeting = ltv_attribution.targeting
+  spending.month_num = ltv_attribution_by_month.month_num
+  AND spending.country = ltv_attribution_by_month.country
+  AND spending.targeting = ltv_attribution_by_month.targeting
 ORDER BY
   spending.country,
   spending.month_num,

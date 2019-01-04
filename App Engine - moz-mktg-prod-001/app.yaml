@@ -1,0 +1,23 @@
+runtime: python
+env: flex
+entrypoint: gunicorn -b :$PORT app:app --timeout 3600
+service: production
+runtime_config:
+  python_version: 3
+
+manual_scaling:
+  instances: 1
+
+#[START env]
+#env_variables:
+#    TOKEN: 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+#[END env]
+
+handlers:
+- url: /snippetPerformance
+  script: app.app
+
+- url: /.*
+  script: app.app
+
+

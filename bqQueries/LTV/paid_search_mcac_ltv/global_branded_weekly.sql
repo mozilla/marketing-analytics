@@ -1,20 +1,6 @@
 -- Pulls together data from Fetch, GA, and Telemetry to tell the story of ad
 -- spend, downloads, installs, and LTV
 WITH
-  -- sum of dau and installs by ad content
-  dau_installs_by_content AS (
-    SELECT
-      PARSE_DATE('%Y%m%d', submission_date_s3) as date,
-      REPLACE(REPLACE(REPLACE(REPLACE(contentCleaned,'%2528','('),'%2529',')'),'%2B',' '),'%257C','|') AS content,
-      SUM(installs) AS sum_installs,
-      SUM(dau) AS sum_dau
-    FROM
-      `telemetry.corpMetrics`
-    GROUP BY
-      date,
-      content
-  ),
-
   -- Limit Fetch data to 1) Non-branded Search in 2) top countries, 3) specific
   -- vendors, and within 4) the current quarter
   nonbranded_search_spend AS (
@@ -76,17 +62,17 @@ SELECT
   spending.week_num,
   spending.sum_vendornetspend,
   spending.sum_fetchdownloads,
-  spending.proj_installs,
+  spending.estimated_installs,
   spending.cpd,
-  spending.proj_cpi,
+  spending.estimated_cpi,
   ltv_attribution.n,
   ltv_attribution.avg_tLTV,
-  ltv_attribution.avg_tLTV * spending.proj_installs AS revenue,
-  (ltv_attribution.avg_tLTV * spending.proj_installs) - spending.sum_vendornetspend AS profit,
-  (ltv_attribution.avg_tLTV * spending.proj_installs) / spending.sum_vendornetspend AS ltv_mcac,
+  ltv_attribution.avg_tLTV * spending.estimated_installs AS estimated_revenue,
+  (ltv_attribution.avg_tLTV * spending.estimated_installs) - spending.sum_vendornetspend AS net_cost_of_acquisition,
+  (ltv_attribution.avg_tLTV * spending.estimated_installs) / spending.sum_vendornetspend AS ltv_mcac,
   CASE
-    WHEN (ltv_attribution.avg_tLTV * spending.proj_installs) = 0 THEN 0
-    ELSE spending.sum_vendornetspend / (ltv_attribution.avg_tLTV * spending.proj_installs)
+    WHEN (ltv_attribution.avg_tLTV * spending.estimated_installs) = 0 THEN 0
+    ELSE spending.sum_vendornetspend / (ltv_attribution.avg_tLTV * spending.estimated_installs)
   END AS mcac_ltv
 FROM (
   SELECT
@@ -96,23 +82,17 @@ FROM (
     SUM(f.vendorNetSpend) AS sum_vendornetspend,
     --  sum(downloads) sum_downloads,
     SUM(f.downloadsGA) AS sum_fetchdownloads,
-    SUM(f.downloadsGA) * .66 AS proj_installs,
+    SUM(f.downloadsGA) * .66 AS estimated_installs,
     CASE
       WHEN SUM(f.downloadsGA) = 0 THEN 0
       ELSE SUM(f.vendornetspend) / SUM(f.downloadsGA)
-    END AS CPD,
+    END AS estimated_cpd,
     CASE
       WHEN SUM(f.downloadsGA) = 0 THEN 0
       ELSE SUM(f.vendornetspend) / (SUM(f.downloadsGA) * .66)
-    END AS proj_CPI
+    END AS estimated_cpi
   FROM
     nonbranded_search_spend AS f
-  LEFT JOIN
-    -- NOTE: nothing is projected from this table at the moment
-    dau_installs_by_content AS t
-  ON
-    f.date = t.date
-    AND f.adname = t.content
   GROUP BY
     week_num,
     f.targeting

@@ -187,13 +187,13 @@ else:
 
 #9 Summarize installs per day from new profiles table and write to csv
 installs = currentYearAcquisitions.groupBy('installDate').agg(countDistinct(currentYearAcquisitions.np_clientID).alias('installs'))
-installs.coalesce(1).write.option("header", "false").csv('s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs{}.csv'.format(endPeriodString))
+installs.coalesce(1).write.option("header", "false").csv('s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/retention/installs{}-{}.csv'.format(startPeriodString, endPeriodString))
 
 
 # TODO Graveyeard - Clean before pushing to cluster
 #aws s3 sync s3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention /home/hadoop/sparkAnalysis/retention/dailyRetention
 #rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/retention/dailyRetention /Users/gkaberere/spark-warehouse/retention
-#gsutil cp /Users/gkaberere/spark-warehouse/retention/dailyRetention/retention20181228-20190102.csv/retention20181228-20190102v2.csv gs://gkabbz-upload
+#gsutil cp /Users/gkaberere/spark-warehouse/retention/dailyRetention/retention20190101-20190102.csv/retention20190101-20190102.csv gs://gkabbz-upload
 
 #rsync -av /Users/gkaberere/Google\ Drive/Github/marketing-analytics/telemetry gkabbz-001:/home/hadoop/sparkAnalysis/mAnalytics/telemetryQueries
 

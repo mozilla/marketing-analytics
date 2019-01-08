@@ -17,7 +17,7 @@ with
       `fetch.fetch_deduped`
     WHERE
       vendor IN ('Adwords', 'Bing')
-      AND country IN ('United States', 'Canada', 'Germany')
+      AND country IN ('United States', 'Canada', 'Germany', 'United Kingdom', 'France', 'Poland')
       AND targeting = 'Nonbrand Search'
       AND vendornetspend > 0
       AND date BETWEEN DATE(2018, 10, 1) AND DATE(2018, 12, 31)
@@ -33,23 +33,24 @@ with
       COUNT(DISTINCT(ltv.client_ID)) AS n,
       AVG(ltv.total_clv) AS avg_tLTV
     FROM
-      `ltv.v1_clients_20181017` AS ltv
+      `ltv.v1_clients_20181101` AS ltv
     LEFT JOIN
       nonbranded_search_spend AS f
     ON
       ltv.content = f.adname
     WHERE
+      f.targeting IS NOT NULL
       -- historical_searches < 5 stddevs away from mean
-      ltv.historical_searches < (
+      AND ltv.historical_searches < (
         SELECT
           STDDEV(historical_searches) * 5
         FROM
-          `ltv.v1_clients_20181017`
+          `ltv.v1_clients_20181101`
       ) + (
         SELECT
           AVG(historical_searches)
         FROM
-          `ltv.v1_clients_20181017`
+          `ltv.v1_clients_20181101`
       )
     GROUP BY
       f.country,

@@ -56,11 +56,20 @@ if period.days <= 7:
 
     #1b Create & filter mkgmainsummary and select desired fields
     print('starting loop')
-    mkgMainSummary = mainSummaryTable.filter("submission_date_s3 >= '{}' AND submission_date_s3 <= '{}'".format(startPeriodString, endPeriodString)).select(columns)
+    mkgMainSummary = mainSummaryTable.filter("submission_date_s3 == '20181231'").select(columns)
 
     # 2 Aggregate total pageviews by client ID
     #  TODO: include appversion. Needs to be split to major version then find the max and assign to that user for that day. Also include channel - be weary of users who switch from release to developer for example
     aggPageviews = mkgMainSummary.groupBy('submission_date_s3', 'client_id').agg(sum(mkgMainSummary.scalar_parent_browser_engagement_total_uri_count).alias('totalURI'))
+
+    testMetrics = aggPageviews.groupBy('submission_date_s3').agg(
+        countDistinct(aggPageviews.client_id).alias('DAU'),
+        sum(when(aggPageviews.totalURI >= 5, 1).otherwise(0)).alias('activeDAU'),
+        sum(aggPageviews.totalURI).alias('totalURI'))
+
+
+# testMetrics = daily summary
+
 
     # 3 Find all current year acquisitions
     currentYearAcquisitions = newProfilesTable.select('submission', 'client_id')
@@ -74,6 +83,9 @@ if period.days <= 7:
     # #TODO: Due to new profiles only available for users with version 55+, this will lead to incorrect classification of new acquisitions
     # ## TODO: with older versions being classified as existing. This is fixable once we create an install table that is all encompassing of all versions
 
+
+
+
     # 4a Join currentYearAcquisitions to aggPageviews
     aggPageviews = aggPageviews.alias('aggPageviews')
     currentYearAcquisitions = currentYearAcquisitions.alias('currentYearAcquisitions')
@@ -85,6 +97,34 @@ if period.days <= 7:
     joinedData = joinedData.withColumn('acqSegment', when(joinedData.acqSegment.isNull(), 'existing').otherwise('new2018'))
     # to enable installDate column to be converted to a date in section 5 below, assigning nulls 19700101. Code errored out when blank
     joinedData = joinedData.withColumn('installDate', when(joinedData.installDate.isNull(), '19700101').otherwise(joinedData.installDate))
+
+    #revisedJoinedData = joinedData.groupBy('submission_date_s3', 'client_id', 'totalURI', 'acqSegment').agg(min(joinedData.installDate).alias('installDateMin'))
+
+    #revised = revisedJoinedData.groupBy('submission_date_s3').agg(
+    #    countDistinct(revisedJoinedData.client_id).alias('DAU'),
+    #    sum(when(revisedJoinedData.totalURI >= 5, 1).otherwise(0)).alias('activeDAU'),
+    #    sum(revisedJoinedData.totalURI).alias('totalURI'))
+
+    #testJoinedData = joinedData.groupBy('submission_date_s3').agg(
+    #    countDistinct(joinedData.client_id).alias('DAU'),
+    #    sum(when(joinedData.totalURI >= 5, 1).otherwise(0)).alias('activeDAU'),
+    #    sum(joinedData.totalURI).alias('totalURI'))
+
+    #Find clients that are being duplicated on join
+    #duplicated = joinedData.groupBy('client_id', 'installDate', 'totalURI').agg(count(joinedData.client_id).alias('client_id_count'))
+    #duplicatedDoubles = duplicated.filter("client_id_count != 1").select('client_id', 'installDate', 'totalURI', 'client_id_count')
+
+    #duplicatedDoubles.coalesce(1).write.option("header", "true").csv(
+    #    's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retentionDuplicates.csv')
+
+    #joinedDataDuplicate = joinedData.groupBy('submission_date_s3', 'client_id').agg(
+    #    countDistinct(joinedData.client_id).alias('DAU'),
+    #    sum(when(joinedData.totalURI >= 5, 1).otherwise(0)).alias('activeDAU'),
+    #    sum(joinedData.totalURI).alias('totalURI'))
+
+    #joinedDataDuplicate = joinedDataDuplicate.filter("DAU")
+    #joinedDataDuplicateTotal = joinedDataDuplicate.agg(sum(joinedDataDuplicate.DAU).alias('DAU'))
+
 
     # 5 Calculate days retained
     #  5a Convert submission_date_s3 and installDate to date format
@@ -99,6 +139,12 @@ if period.days <= 7:
     metrics = joinedData.groupBy('submission_date_s3', 'installDate', 'daysRetained', 'acqSegment').agg(countDistinct(joinedData.client_id).alias('DAU'),
                                                                                               sum(when(joinedData.totalURI >= 5, 1).otherwise(0)).alias('activeDAU'),
                                                                                               sum(joinedData.totalURI).alias('totalURI'))
+
+    finalMetricsTest = metrics.groupBy('submission_date_s3').agg(
+        sum(metrics.DAU).alias('DAU'),
+        sum(metrics.activeDAU).alias('activeDAU'),
+        sum(metrics.totalURI).alias('totalURI'))
+
 
     #7 Write file
     metrics.coalesce(1).write.option("header", "false").csv(
@@ -144,10 +190,7 @@ else:
         currentYearAcquisitions = currentYearAcquisitions.alias('currentYearAcquisitions')
         joinedData = aggPageviews.join(currentYearAcquisitions,
                                        col('aggPageviews.client_id') == col('currentYearAcquisitions.np_clientId'),
-                                       'left_outer')
-        # Remove duplication on join
-        joinedData = joinedData.groupBy('submission_date_s3', 'client_id', 'totalURI', 'acqSegment').agg(
-            min(joinedData.installDate).alias('installDate'))
+                                       'left')
 
         # 4b In joined data convert nulls to existing for column acqSegment
         joinedData = joinedData.withColumn('acqSegment',

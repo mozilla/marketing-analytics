@@ -23,7 +23,7 @@ ORDER By 8 DESC)
 
 SELECT
     date,
-    /*message_id,*/
+    message_id,
     CASE WHEN left(release_channel, 7) = 'release' THEN 'release' ELSE
         CASE WHEN left(release_channel, 6) = 'aurora' THEN 'aurora' ELSE
         CASE WHEN left(release_channel, 4) = 'beta' THEN 'beta' ELSE

@@ -43,8 +43,7 @@ columns = ['submission_date_s3',
                        'windows_build_number',
                        'scalar_parent_browser_engagement_total_uri_count'
                        ]
-
-
+t
 # Retrieve Data in Chunks
 startPeriod = datetime(year=2018, month=8, day=1)
 endPeriod = datetime(year=2018, month=8, day=19)

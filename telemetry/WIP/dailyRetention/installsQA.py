@@ -55,7 +55,7 @@ if period.days <= 7:
 
     #1b Create & filter mkgmainsummary and select desired fields
     print('starting loop')
-    mkgMainSummary = mainSummaryTable.filter("submission_date_s3 == '20181231'").select(columns)
+    mkgMainSummary = mainSummaryTable.filter("submission_date_s3 >= '20180109' AND submission_date_s3 <= '20180116'").select(columns)
 
     # 2 Aggregate total pageviews by client ID
     #  TODO: include appversion. Needs to be split to major version then find the max and assign to that user for that day. Also include channel - be weary of users who switch from release to developer for example
@@ -73,10 +73,22 @@ if period.days <= 7:
     # 3 Find all current year acquisitions
     currentYearAcquisitions = newProfilesTable.select('submission', 'client_id')
     # TODO: Due to this dimension build, need to figure out how to feed the year based off of actual year of acquisition. Currently simply pulling for 2018.
-    currentYearAcquisitions = currentYearAcquisitions.filter("submission >= '20180101'")
-    currentYearAcquisitions = currentYearAcquisitions.withColumn('acqSegment', lit('new2018'))
-    currentYearAcquisitions = currentYearAcquisitions.withColumnRenamed('submission', 'installDate')
+    currentYearAcquisitions = currentYearAcquisitions.filter("submission >= '20180101' AND submission <= '20181231'")
+    currentYearAcquisitions = currentYearAcquisitions.groupBy('client_id').agg(
+        min(currentYearAcquisitions.submission).alias('installDate'))
+    currentYearAcquisitions = currentYearAcquisitions.withColumn('acqSegment', lit('newProfilePing'))
     currentYearAcquisitions = currentYearAcquisitions.withColumnRenamed('client_id', 'np_clientID')
+
+    # Test if current year acquisitions has duplication
+    testCurrentYear = currentYearAcquisitions.withColumn('counting', lit('1'))
+    testCurrentYear = currentYearAcquisitions.groupBy('np_clientID').agg(count(currentYearAcquisitions.np_clientID).alias('clientCount'), min(currentYearAcquisitions.installDate).alias('minDate'), max(currentYearAcquisitions.installDate).alias('maxDate'))
+
+    testCurrentYearTest = testCurrentYear.filter("clientCount > 1")
+
+    testCurrentYearTest.coalesce(1).write.option("header", "true").csv(
+            's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/newProfileDuplicates.csv')
+
+
 
     # 4 Determine current users who are new (acquired in current year) vs existing (acquired prior to current year)
     # #TODO: Due to new profiles only available for users with version 55+, this will lead to incorrect classification of new acquisitions
@@ -147,8 +159,7 @@ if period.days <= 7:
 
     #7 Write file
     metrics.coalesce(1).write.option("header", "false").csv(
-        's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retention{}-{}.csv'.format(
-            startPeriodString, endPeriodString))
+        's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/gkabbz/retention/retentionTestJan1720180109-20180116.csv')
     print("{}-{} completed and saved".format(startPeriodString, endPeriodString))
 
 else:

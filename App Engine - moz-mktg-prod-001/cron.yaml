@@ -1,6 +1,0 @@
-cron:
-- description : load snippets performance to snippet summary table
-  url : /snippetPerformance
-  schedule: every day 11:00
-  timezone: US/Eastern
-  target: production

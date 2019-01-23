@@ -31,6 +31,8 @@ SELECT
   searches,
   ROUND(AVG(DAU) OVER (ORDER BY funnelOrigin, submissionDate ROWS BETWEEN 27 PRECEDING AND CURRENT ROW)) AS DAU28Day,
   ROUND(AVG(aDAU) OVER (ORDER BY funnelOrigin, submissionDate ROWS BETWEEN 27 PRECEDING AND CURRENT ROW)) AS aDAU28Day,
+  ROUND(AVG(DAU) OVER (ORDER BY funnelOrigin, submissionDate ROWS BETWEEN 90 PRECEDING AND CURRENT ROW)) AS DAU91Day,
+  ROUND(AVG(aDAU) OVER (ORDER BY funnelOrigin, submissionDate ROWS BETWEEN 90 PRECEDING AND CURRENT ROW)) AS aDAU91Day,
   SUM(CASE WHEN funnelOrigin = 'mozFunnel' THEN installs ELSE 0 END) as mktgAttrInstalls,
   SUM(CASE WHEN funnelOrigin = 'darkFunnel' THEN installs ELSE 0 END) as darkFunnelInstalls,
   SUM(CASE WHEN funnelOrigin = 'total' THEN installs ELSE 0 END) as totalInstalls

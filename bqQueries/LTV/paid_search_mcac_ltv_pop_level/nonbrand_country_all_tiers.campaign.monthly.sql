@@ -155,7 +155,7 @@ with
       SUM(fetch_summary.sum_fetch_downloads) AS sum_fetch_downloads,
       SUM(downloads.non_fx_downloads) AS sum_non_fx_downloads,
       SUM(ltv_new_clients.num_installs) AS sum_installs,
-      SUM(ltv_new_clients.sum_tLTV) AS sum_tLTV
+      SUM(ltv_new_clients.sum_pLTV) AS sum_pLTV
     FROM
       fetch_summary
     LEFT JOIN
@@ -180,7 +180,7 @@ SELECT
   *,
   sum_vendornetspend / sum_fetch_downloads AS cpd,
   sum_vendornetspend / sum_installs AS cpi,
-  sum_tLTV - sum_vendornetspend AS net_cost_of_acquisition,
-  sum_tLTV / sum_vendornetspend AS ltv_mcac
+  sum_pLTV - sum_vendornetspend AS net_cost_of_acquisition,
+  sum_pLTV / sum_vendornetspend AS ltv_mcac
 FROM
   sem_summary

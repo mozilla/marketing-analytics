@@ -1,3 +1,5 @@
+-- Used to Populate Paid Search Brand Country Weekly
+
 with
   fetch_trafficking as (
     select

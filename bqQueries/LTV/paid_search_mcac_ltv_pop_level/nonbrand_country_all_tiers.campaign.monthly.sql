@@ -1,3 +1,5 @@
+-- Used to populate Paid Search Non-brand Country Campaign Monthly
+
 with
   fetch_trafficking as (
     select

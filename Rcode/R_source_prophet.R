@@ -19,23 +19,25 @@ make_holiday_list <- function(year_in_dat) {
   # base on the first/last day of each year, get the holiday list
   holidays_of_years_start <- as.Date(unlist(map(first_day_of_years, function(x) ymd(x+days(0:1)))), origin="1970-01-01")
   holidays_of_years_end   <- as.Date(unlist(map(last_day_of_years, function(x) ymd(x+days(-1:0)))), origin="1970-01-01")
-  holiday_names <- c(rep("Martin Luther King", 6), 
-                     rep("President's Day", 6), 
-                     rep("Easter", 6), 
-                     rep("Memorial Day", 6*3),
-                     rep("Independence Day", 6*6), 
-                     rep("Ferragosto", 6), 
-                     rep("Labor Day", 6*3), 
-                     rep("Columbus Day", 6), 
-                     rep("Veteran Day", 6), 
-                     rep("International Labor Day", 6), 
-                     rep("Germany Unity", 6), 
-                     rep("Thanksgiving", 6*4), 
-                     rep("Christmas Eve", 6),
-                     rep("Christmas", 6),
-                     rep("New Year Eve", 6),
-                     rep("New Year", 6), 
-                     rep("Chr_NY", 12)
+  holiday_names <- c(rep("hol_MLK", 6), 
+                     rep("hol_President's Day", 6), 
+                     #rep("Easter", 6), 
+                     rep("hol_Memorial Day", 6*3),
+                     rep("hol_Independence Day", 6), 
+                     rep("hol_Independence Week", 6*5), 
+                     rep("hol_Ferragosto", 6), 
+                     rep("hol_Labor Day", 6*3), 
+                     #rep("Columbus Day", 6), 
+                     #rep("hol_Veteran Day", 6), 
+                     rep("hol_International Labor Day", 6), 
+                     rep("hol_Germany Unity", 6), 
+                     rep("hol_Thanksgiving", 6), 
+                     rep("hol_Thanksgiving Week", 6*3), 
+                     rep("hol_Christmas Eve", 6),
+                     rep("hol_Christmas", 6),
+                     rep("hol_New Year Eve", 6),
+                     rep("hol_New Year", 6), 
+                     rep("hol_Chr_NY", 12)
                      #rep("Independence Day", 3), 
                      #rep("Thanksgiving", 5), 
                      #rep("Christmas Wnd", 6), 
@@ -43,13 +45,13 @@ make_holiday_list <- function(year_in_dat) {
   )
   other_holidays <-         c('01/20/2014', '01/19/2015', '01/18/2016', '01/16/2017','01/15/2018','01/21/2019', # Martin Luther King, Jr.
                               '02/17/2014', '02/16/2015', '02/15/2016', '02/20/2017','02/19/2018','02/18/2019', # Washington's Birthday
-                              '04/20/2014', '04/05/2015', '03/27/2016', '04/16/2017','04/01/2018','04/21/2019', # Easter
+                              #'04/20/2014', '04/05/2015', '03/27/2016', '04/16/2017','04/01/2018','04/21/2019', # Easter
                               '05/22/2014', '05/23/2015', '05/28/2016', '05/27/2017','05/26/2018','05/25/2019', # Memorial long weekend
                               '05/23/2014', '05/24/2015', '05/29/2016', '05/28/2017','05/27/2018','05/26/2019', # Memorial long weekend
                               '05/24/2014', '05/25/2015', '05/30/2016', '05/29/2017','05/28/2018','05/27/2019', # Memorial long weekend
+                              '07/04/2014', '07/04/2015', '07/04/2016', '07/04/2017','07/04/2018','07/04/2019', # Independence day weekend
                               '07/02/2014', '07/02/2015', '07/02/2016', '07/02/2017','07/02/2018','07/02/2019', # Independence day weekend
                               '07/03/2014', '07/03/2015', '07/03/2016', '07/03/2017','07/03/2018','07/03/2019', # Independence day weekend
-                              '07/04/2014', '07/04/2015', '07/04/2016', '07/04/2017','07/04/2018','07/04/2019', # Independence day weekend
                               '07/05/2014', '07/05/2015', '07/05/2016', '07/05/2017','07/05/2018','07/05/2019', # Independence day weekend
                               '07/06/2014', '07/06/2015', '07/06/2016', '07/06/2017','07/06/2018','07/06/2019', # Independence day weekend
                               '07/07/2014', '07/07/2015', '07/07/2016', '07/07/2017','07/07/2018','07/07/2019', # Independence day weekend
@@ -57,8 +59,8 @@ make_holiday_list <- function(year_in_dat) {
                               '08/30/2014', '09/05/2015', '09/03/2016', '09/02/2017','09/01/2018','08/31/2019', # Labor day weekend
                               '08/31/2014', '09/06/2015', '09/04/2016', '09/03/2017','09/02/2018','09/01/2019', # Labor day weekend
                               '09/01/2014', '09/07/2015', '09/05/2016', '09/04/2017','09/03/2018','09/02/2019', # Labor day weekend
-                              '10/12/2014', '10/11/2015', '10/10/2016', '10/09/2017','10/08/2018','10/14/2019', # Columbus Day
-                              '11/11/2014', '11/11/2015','11/11/2016', '11/11/2017', '11/11/2018','11/11/2019', # Veteran Day
+                              #'10/12/2014', '10/11/2015', '10/10/2016', '10/09/2017','10/08/2018','10/14/2019', # Columbus Day
+                              #'11/11/2014', '11/11/2015','11/11/2016', '11/11/2017', '11/11/2018','11/11/2019', # Veteran Day
                               '05/01/2014', '05/01/2015','05/01/2016', '05/01/2017','05/01/2018','05/01/2019', # International Labor Day
                               '10/03/2014', '10/03/2015','10/03/2016', '10/03/2017','10/03/2018','10/03/2019', # Day of Germany Unity
                               '11/27/2014', '11/26/2015', '11/24/2016', '11/23/2017','11/22/2018','11/28/2019', # Thanksgiving week
@@ -93,6 +95,7 @@ make_holiday_list <- function(year_in_dat) {
 
 # to get the best parameters settings for Prophet model based on ProphetGrid (as listed in function below)
 find_best_model_params <- function(data, holidays, growth, show_best_param_results = TRUE) {
+  library(tidyverse)
   # to get the correct forecast days as forecast_period and range (last_history_date, end_forecast_date]
   last_history_date <- max(data$ds)
   first_history_date <- min(data$ds)
@@ -100,7 +103,7 @@ find_best_model_params <- function(data, holidays, growth, show_best_param_resul
   n_quarters = (as.yearqtr(ymd(last_history_date))-as.yearqtr(ymd(first_history_date)))*4
   # split the training dataset and 31-day interval validation dataset with range [begin_of_cv_dataset, last_history_date]
   # we are going to select the best tuning parameters based on fitting validation dataset with training model
-  begin_of_cv_dataset <- last_history_date+days(-90)
+  begin_of_cv_dataset <- last_history_date+days(-181)
   predict_dat <- data %>% filter(ds < begin_of_cv_dataset) 
   validate_dat <- data %>% filter(ds >= begin_of_cv_dataset & ds <= last_history_date)
   
@@ -110,18 +113,18 @@ find_best_model_params <- function(data, holidays, growth, show_best_param_resul
   # just to have a vague idea of the best values for the parameters. This step can be skipped if the user
   # has some expert knowledge about the task at hand.
   if (growth == "linear") {
-    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.5, 0.1, 0.01), # run from 0.05, 0.01, 0.005, 0.001 
+    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01), # run from 0.05, 0.01, 0.005, 0.001 
                                # changepoint_prior_scale, by default 0.05, increase it will make the trend more flexible, 
                                # decrease it make the trend less flexible
-                               seasonality_prior_scale = c(1, 0.5, 0.1),
-                               holidays_prior_scale = c(1, 0.5, 0.1),
+                               seasonality_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
+                               holidays_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
                                n_changepoints = n_quarters, # or number of month/quarter in the data 
                                capacity = 5*max(predict_dat$y),
                                growth = growth) 
   }else{
-    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.5, 0.1, 0.01),
-                               seasonality_prior_scale = c( 1, 0.5, 0.1),
-                               holidays_prior_scale = c(1, 0.5, 0.1),
+    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
+                               seasonality_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
+                               holidays_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
                                n_changepoints = n_quarters, # or number of month/quarter in the data 
                                capacity = c(10,20)*max(predict_dat$y),
                                growth = growth)  
@@ -150,14 +153,16 @@ find_best_model_params <- function(data, holidays, growth, show_best_param_resul
     
     future <- make_future_dataframe(m, periods = nrow(validate_dat), include_history = FALSE)
     if (parameters$growth == 'logistic') {future$cap <- parameters$capacity}
-    forecast <- predict(m, future) 
-    results[i,] <- forecast::accuracy(forecast[ymd(forecast$ds) %in% validate_dat$ds, 'yhat'], validate_dat$y)[ , c('MAE', 'MPE', 'MAPE')]
+    forecast_dat <- predict(m, future) %>% select(ds, yhat) %>% mutate(ds = ymd(ds))
+    common_dat <- tibble(ds = as.Date(intersect(forecast_dat$ds, validate_dat$ds))) # in case some data missing
+    tmp_forecast <- forecast_dat %>% filter(ds %in% common_dat$ds)
+    results[i,] <- forecast::accuracy(tmp_forecast[, 'yhat'], validate_dat$y)[ , c('MAE', 'MPE', 'MAPE')]
   }
   
   # attach the result to each parameters setting
   prophetGrid <- cbind(prophetGrid, results)
   # select the best parameters setting with the smallest MAPE
-  best_params <- prophetGrid[prophetGrid[,"MAE"] == min(results[,"MAE"]), ]
+  best_params <- prophetGrid[prophetGrid[,"MAPE"] == min(results[,"MAPE"]), ]
   list(best_params=best_params, all_params = prophetGrid)
 }
 
@@ -173,28 +178,27 @@ find_best_model_params_few <- function(data, holidays, growth, show_best_param_r
   n_quarters = (as.yearqtr(ymd(last_history_date))-as.yearqtr(ymd(first_history_date)))*4
   # split the training dataset and 31-day interval validation dataset with range [begin_of_cv_dataset, last_history_date]
   # we are going to select the best tuning parameters based on fitting validation dataset with training model
-  begin_of_cv_dataset <- last_history_date+days(-90)
+  begin_of_cv_dataset <- last_history_date+days(-181)
   predict_dat <- data %>% filter(ds < begin_of_cv_dataset) 
   validate_dat <- data %>% filter(ds >= begin_of_cv_dataset & ds <= last_history_date)
-  
   
   # Search grid. The parameters that require some tuning are related to the flexibility that we want to 
   # give the model to fit change points, seasonality and holidays. A non-exhaustive grid search is done
   # just to have a vague idea of the best values for the parameters. This step can be skipped if the user
   # has some expert knowledge about the task at hand.
   if (growth == "linear") {
-    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.1, 0.05, 0.01), 
+    prophetGrid <- expand.grid(changepoint_prior_scale = c( 0.3, 0.2, 0.1, 0.05, 0.01), 
                                # changepoint_prior_scale, by default 0.05, increase it will make the trend more flexible, 
                                # decrease it make the trend less flexible
-                               seasonality_prior_scale = c(0.1, 0.05, 0.01, 0.001),
-                               holidays_prior_scale = c( 0.1, 0.05, 0.01),
+                               seasonality_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
+                               holidays_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
                                n_changepoints = n_quarters, # or number of month/quarter in the data 
                                capacity = 5*max(predict_dat$y),
                                growth = growth) 
   }else{
-    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.1, 0.05, 0.01), 
-                               seasonality_prior_scale = c(0.1, 0.05, 0.01, 0.001),
-                               holidays_prior_scale = c(0.1, 0.05, 0.01),
+    prophetGrid <- expand.grid(changepoint_prior_scale = c(0.3, 0.2, 0.1, 0.05), 
+                               seasonality_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
+                               holidays_prior_scale = c(0.5, 0.25, 0.1, 0.05, 0.01),
                                n_changepoints = n_quarters, # or number of month/quarter in the data 
                                capacity = c(10,20)*max(predict_dat$y),
                                growth = growth)  
@@ -220,21 +224,20 @@ find_best_model_params_few <- function(data, holidays, growth, show_best_param_r
                  weekly.seasonality = TRUE, # weekly seasonal component using dummy variables
                  daily.seasonality = FALSE #  daily seasonal component using dummy variables only when subdaily data available
     )
-    
     future <- make_future_dataframe(m, periods = nrow(validate_dat), include_history = FALSE)
     if (parameters$growth == 'logistic') {future$cap <- parameters$capacity}
-    forecast <- predict(m, future) 
-    results[i,] <- forecast::accuracy(forecast[ymd(forecast$ds) %in% validate_dat$ds, 'yhat'], validate_dat$y)[ , c('MAE', 'MPE', 'MAPE')]
+    forecast_dat <- predict(m, future) %>% select(ds, yhat) %>% mutate(ds = ymd(ds))
+    common_dat <- tibble(ds = as.Date(intersect(forecast_dat$ds, validate_dat$ds))) # in case some data missing
+    tmp_forecast <- forecast_dat %>% filter(ds %in% common_dat$ds)
+    results[i,] <- forecast::accuracy(tmp_forecast[, 'yhat'], validate_dat$y)[ , c('MAE', 'MPE', 'MAPE')]
   }
   
   # attach the result to each parameters setting
   prophetGrid <- cbind(prophetGrid, results)
   # select the best parameters setting with the smallest MAPE
-  best_params <- prophetGrid[prophetGrid[,"MAE"] == min(results[,"MAE"]), ]
+  best_params <- prophetGrid[prophetGrid[,"MAPE"] == min(results[,"MAPE"]), ]
   list(best_params=best_params, all_params = prophetGrid)
 }
-
-
 
 ##################################################################################################################  
 ##################################################################################################################  
@@ -329,7 +332,7 @@ ci.gen.calculation <- function(model, start_date, end_date, ci.prop, file_path, 
   
   # calculate posterior predictive sample for 91d MA 
   ma91d.rep <- apply(pred.samples, 2, function(x) rollapply(c(hist_data$y, x), list(-90:0), mean, fill=NA))
-  future.ma91d.rep <- ma91d[c((history.length+1):nrow(ma91d)),] 
+  future.ma91d.rep <- ma91d.rep[c((history.length+1):nrow(ma91d.rep)),] 
   
   # get the CI for 91d MA
   # ci.prop <- c(0.7, 0.8, 0.90, 0.95, 0.99)

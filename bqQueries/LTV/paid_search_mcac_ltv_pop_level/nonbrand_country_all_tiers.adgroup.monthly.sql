@@ -5,7 +5,9 @@ with
       vendor,
       country,
       regexp_extract(socialstring, r"^(.+)_.+$") as campaign,
-      regexp_extract(socialstring, r"^.+_(.+)$") as adgroup
+      regexp_extract(socialstring, r"^.+_(.+)$") as adgroup,
+      -- @echo added socialstring
+      socialstring
     from
       `fetch.latest_trafficking`
     where
@@ -29,8 +31,13 @@ with
   fetch_summary AS (
     SELECT
       EXTRACT(MONTH FROM date) AS month_num,
+      -- @echo added adname
+      fetch_trafficking.adname,
       country,
       campaign,
+      -- @echo added socialstring and adgroup
+      adgroup,
+      socialstring,
       sum(sum_vendornetspend) AS sum_vendornetspend,
       sum(sum_fetch_downloads) AS sum_fetch_downloads
     FROM
@@ -45,8 +52,11 @@ with
       AND date BETWEEN DATE(2019, 1, 1) AND DATE(2019, 12, 31)
     group by
       month_num,
+      adname,
       country,
-      campaign
+      campaign,
+      adgroup,
+      socialstring
   ),
 
   download_events AS (
@@ -96,7 +106,8 @@ with
     SELECT
       EXTRACT(MONTH FROM date) AS month_num,
       country,
-      campaign,
+      -- @echo changed campaign to content
+      content,
       SUM(IF(downloads > 0,1,0)) as downloads,
       SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as non_fx_downloads
     FROM
@@ -104,7 +115,8 @@ with
     GROUP BY
       month_num,
       country,
-      campaign
+       -- @echo changed campaign to content
+      content
   ),
 
   ltv_new_clients AS (
@@ -127,6 +139,8 @@ with
         ELSE 'Tier 3'
       END AS country,
       regexp_replace(campaign, r"%257C", "|") as campaign,
+      -- @echo added content
+      content,
       count(DISTINCT client_id) AS num_installs,
       SUM(total_clv) AS sum_tLTV,
       SUM(predicted_clv_12_months) AS sum_pLTV
@@ -141,13 +155,18 @@ with
     GROUP BY
       month_num,
       country,
-      campaign
+      campaign,
+      content
   ),
 
   sem_summary AS (
     SELECT
       fetch_summary.month_num,
       fetch_summary.country,
+      -- @echo added socialstring and adgroup changed campaign to adname as it's covered with social string
+      fetch_summary.adname,
+      fetch_summary.socialstring,
+      fetch_summary.adgroup,
       SUM(fetch_summary.sum_vendornetspend) AS sum_vendornetspend,
       SUM(fetch_summary.sum_fetch_downloads) AS sum_fetch_downloads,
       SUM(downloads.non_fx_downloads) AS sum_non_fx_downloads,
@@ -160,16 +179,22 @@ with
     ON
           fetch_summary.month_num = downloads.month_num
       AND fetch_summary.country  = downloads.country
-      AND fetch_summary.campaign = downloads.campaign
+      AND fetch_summary.adname = downloads.content
     LEFT JOIN
       ltv_new_clients
     ON
           fetch_summary.month_num = ltv_new_clients.month_num
-      AND fetch_summary.country  = ltv_new_clients.country
-      AND fetch_summary.campaign = ltv_new_clients.campaign
+      -- @echo changed join to join on content instead of on country and campaign
+      AND fetch_summary.adname = ltv_new_clients.content
+      /*fetch_summary.country  = ltv_new_clients.country
+      AND fetch_summary.campaign = ltv_new_clients.campaign*/
     GROUP BY
       fetch_summary.month_num,
-      fetch_summary.country
+      fetch_summary.country,
+      -- @echo added socialstring and adgroup changed campaign to adname as it's covered with social string
+      fetch_summary.adname,
+      fetch_summary.socialstring,
+      fetch_summary.adgroup
   )
 
 SELECT
@@ -179,5 +204,4 @@ SELECT
   sum_tLTV - sum_vendornetspend AS net_cost_of_acquisition,
   sum_tLTV / sum_vendornetspend AS ltv_mcac
 FROM
-  sem_summary
-ORDER BY 3 DESC
+sem_summary

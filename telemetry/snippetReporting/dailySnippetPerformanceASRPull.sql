@@ -23,7 +23,7 @@ ORDER By 8 DESC)
 
 SELECT
     date,
-    message_id,
+    CASE WHEN len(message_id) > 5 THEN 'etlCleanup-invalidMessageID' ELSE message_id END as message_id,
     CASE WHEN left(release_channel, 7) = 'release' THEN 'release' ELSE
         CASE WHEN left(release_channel, 6) = 'aurora' THEN 'aurora' ELSE
         CASE WHEN left(release_channel, 4) = 'beta' THEN 'beta' ELSE
@@ -35,7 +35,7 @@ SELECT
         CASE WHEN len(locale) > 6 THEN 'etlCleanup-invalidLocale' ELSE locale END END END as locale,
     country_code,
     os,
-    version,
+    CASE WHEN len(version) <= 6 THEN version ELSE 'other' END as version,
     SUM(impressions) as impressions,
     SUM(clicks) as clicks,
     SUM(blocks) as blocks

@@ -171,3 +171,4 @@ SELECT
   sum_pLTV / sum_vendornetspend AS ltv_mcac
 FROM
   sem_summary
+ORDER BY 2, 1 DESC

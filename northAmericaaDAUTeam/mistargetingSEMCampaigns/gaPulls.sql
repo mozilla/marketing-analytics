@@ -10,7 +10,8 @@ SUM(sessionsTable.totalSessions) as totalSessions,
 SUM(sessionsTable.nonFxSessions) as nonFxSessions,
 SUM(hitsTable.downloads) as downloads,
 SUM(hitsTable.nonFXDownloads) as nonFXDownloads,
-fetchSpend.costPerClick as costPerTrackedClick
+fetchSpend.costPerImpressionDCM as costPerImpressionDCM,
+fetchSpend.costPerClicksDCM as costPerClicksDCM
 
 FROM(
 -- session level metrics --
@@ -92,16 +93,19 @@ LEFT JOIN
 (SELECT
   adName,
   SUM(VendorNetSpend) as vendorNetSpend,
-  SUM(TrackedClicks) as trackedClicks,
-  SAFE_DIVIDE(SUM(VendorNetSpend),SUM(TrackedClicks)) as costPerClick
+  SUM(impressionsDCM) as impressionsDCM,
+  SUM(clicksDCM) as clicksDCM,
+  SAFE_DIVIDE(SUM(VendorNetSpend),SUM(impressionsDCM)) as costPerImpressionDCM,
+  SAFE_DIVIDE(SUM(VendorNetSpend),SUM(clicksDCM)) as costPerClicksDCM
 FROM
   `fetch.fetch_deduped`
+WHERE date >= '2018-01-01' AND date <= '2018-12-31'
 GROUP BY 1) fetchSpend
 
 ON
 sessionsTable.adContent = fetchSpend.adName)
 
-GROUP BY 1,2,3,4,5,6,11
+GROUP BY 1,2,3,4,5,6,11,12
 ORDER BY 1,3,4 DESC )
 
 --- Pull from all data table
@@ -128,11 +132,12 @@ SUM(totalSessions) as totalSessions,
 SUM(nonFxSessions) as nonFxSessions,
 SUM(downloads) as downloads,
 SUM(nonFXDownloads) as nonFXDownloads,
-costPerTrackedClick
+costPerImpressionDCM,
+costPerClicksDCM
 FROM alldata
 WHERE
 source IN ('google', 'bing')
 AND medium = 'cpc'
-GROUP BY 1,2,3,4,5,6,11
+GROUP BY 1,2,3,4,5,6,11,12
 ORDER BY semType DESC, totalSessions DESC)
 WHERE targetCountry IN ('United States', 'Canada', 'Germany', 'France', 'United Kingdom')

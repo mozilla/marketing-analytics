@@ -1,4 +1,4 @@
--- Used to Populate Paid Search Non-brand Country Campaign Weekly
+-- Used to Populate Paid Search Brand Country Weekly
 
 WITH
   fetch_sem_spend AS (
@@ -14,7 +14,7 @@ WITH
   FROM
     `fetch.fetch_deduped`
   WHERE
-    targeting = 'Nonbrand Search'
+    targeting = 'Brand Search'
     AND vendor IN ('Adwords',
       'Bing')
     -- TODO: Need to check if this excludes any campaigns with no spend but downloads
@@ -78,7 +78,7 @@ WITH
     AND hits.eventInfo.eventCategory IS NOT NULL
     AND trafficSource.source IN ('google','bing')
     AND trafficSource.medium = 'cpc'
-    AND trafficSource.campaign LIKE '%NB%'
+    AND (trafficSource.campaign LIKE 'Brand%' OR trafficSource.campaign LIKE 'Firefox-Brand%')
   GROUP BY
     date,
     country,
@@ -115,7 +115,7 @@ WITH
     funnelOrigin = 'mozFunnel'
     AND sourceCleaned IN ('google', 'bing')
     AND mediumCleaned IN ('cpc')
-    AND campaignCleaned LIKE '%NB%'
+    AND (campaignCleaned LIKE 'Brand%' OR campaignCleaned LIKE 'Firefox-Brand%')
     AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2, 6)
   GROUP BY
     installsDate,
@@ -139,7 +139,6 @@ WITH
       downloads.downloadsDate as downloadsDate,
       fetch_summary.adName,
       fetch_summary.country,
-      fetch_summary.campaign,
       SUM(fetch_summary.vendorNetSpend) AS sum_vendorNetSpend,
       SUM(fetch_summary.fetchDownloads) AS sum_fetch_downloads,
       SUM(downloads.totalDownloads) AS totalDownloads,
@@ -167,11 +166,9 @@ WITH
       fetchDate,
       downloadsDate,
       country,
-      campaign,
       adname,
       avg_pltv
       )
-
 
 
   SELECT
@@ -179,7 +176,6 @@ WITH
   MIN(CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as week_start,
   MAX(CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as week_end,
   CASE WHEN country IS NOT NULL THEN country ELSE 'missingAdNameTracking' END as country,
-  campaign,
   SUM(sum_vendorNetSpend) as vendorNetSpend,
   SUM(sum_fetch_downloads) as fetchDownloadsGA,
   SUM(totalDownloads) as gaTotalDownloads,
@@ -193,9 +189,5 @@ WITH
   FROM sem_summary
   GROUP BY
     week_num,
-    country,
-    campaign
-   ORDER BY
-    week_num DESC,
-    country,
-    vendorNetSpend DESC
+    country
+  ORDER BY 1 DESC

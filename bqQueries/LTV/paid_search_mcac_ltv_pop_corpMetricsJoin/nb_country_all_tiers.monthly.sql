@@ -1,187 +1,192 @@
 -- Populates paid search non brand country monthly report
 
-with
-  fetch_trafficking as (
-    select
-      adname,
-      vendor,
-      country,
-      regexp_extract(socialstring, r"^(.+)_.+$") as campaign,
-      regexp_extract(socialstring, r"^.+_(.+)$") as adgroup
-    from
-      `fetch.latest_trafficking`
-    where
-      targeting = 'Nonbrand Search'
-      and vendor in ('Adwords', 'Bing')
-  ),
+WITH
+  fetch_sem_spend AS (
+  SELECT
+    date,
+    adname,
+    vendor,
+    CASE WHEN country IN ('United States',  'Germany',  'Canada',  'United Kingdom',  'France', 'Poland', 'Australia','Netherlands','Switzerland') THEN country ELSE 'Tier3' END as country,
+    REGEXP_EXTRACT(socialstring, r"^(.+)_.+$") AS campaign,
+    REGEXP_EXTRACT(socialstring, r"^.+_(.+)$") AS adgroup,
+    SUM(VendorNetSpend) AS vendorNetSpend,
+    SUM(downloadsga) AS fetchDownloads
+  FROM
+    `fetch.fetch_deduped`
+  WHERE
+    targeting = 'Nonbrand Search'
+    AND vendor IN ('Adwords',
+      'Bing')
+    -- TODO: Need to check if this excludes any campaigns with no spend but downloads
+    AND date BETWEEN DATE(2019,1,1)
+    AND DATE(2019,2,6)
+  GROUP BY
+    date,
+    adname,
+    vendor,
+    country,
+    campaign,
+    adgroup),
 
-  fetch_metrics as (
-    select
-      date,
-      adname,
-      sum(vendornetspend) as sum_vendornetspend,
-      sum(downloadsga) as sum_fetch_downloads
-    from
-    -- fetch.latest metric is pulled as most recent table uploaded for fetch_metric
-      `fetch.latest_metric`
-    group by
-      date,
-      adname
-  ),
 
-  fetch_summary AS (
-    SELECT
-      EXTRACT(MONTH FROM date) AS month_num,
-      country,
-      campaign,
-      sum(sum_vendornetspend) AS sum_vendornetspend,
-      sum(sum_fetch_downloads) AS sum_fetch_downloads
-    FROM
-      fetch_trafficking
-    LEFT JOIN
-      fetch_metrics
-    ON
-      fetch_trafficking.adname = fetch_metrics.adname
-    WHERE
-          sum_vendornetspend  > 0
-      AND sum_fetch_downloads > 0
-      AND date BETWEEN DATE(2019, 1, 1) AND DATE(2019, 12, 31)
-    group by
-      month_num,
-      country,
-      campaign
-  ),
+  fetch_summary AS(
+  SELECT
+    date AS fetchDate,
+    country,
+    adname,
+    campaign,
+    adgroup,
+    SUM(vendorNetSpend) AS vendorNetSpend,
+    SUM(fetchDownloads) AS fetchDownloads
+  FROM
+    fetch_sem_spend
+  GROUP BY
+    fetchDate,
+    country,
+    adname,
+    campaign,
+    adgroup),
+
 
   download_events AS (
-    SELECT
-      PARSE_DATE('%Y%m%d', date) AS date,
-      CASE
-        -- 2019 Tier 1 countries
-        WHEN geoNetwork.country IN ('United States', 'Germany', 'Canada', 'United Kingdom', 'France') THEN geoNetwork.country
-        -- NOTE: 2018 non-Tier 1 countries are included to report on the tail of
-        -- the spending from last year
-        WHEN geoNetwork.country IN ('Poland', 'Australia', 'Netherlands', 'Switzerland') THEN geoNetwork.country
-        -- NOTE: catch-all clause for 2019 Tier 3 countries
-        ELSE 'Tier 3'
-      END AS country,
-      fullVisitorId AS visitorId,
-      visitNumber AS visitNumber,
-      trafficSource.source AS source,
-      trafficSource.medium AS medium,
-      trafficSource.campaign AS campaign,
-      trafficSource.adContent AS content,
-      device.browser AS browser,
-      SUM(IF (hits.eventInfo.eventAction = "Firefox Download", 1, 0)) AS downloads
-    FROM
-      `65789850.ga_sessions_*`, UNNEST(hits) AS hits
-    WHERE
-      _TABLE_SUFFIX NOT IN ('', 'dev')
-      AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-      AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 12, 31)
-      AND hits.type = 'EVENT'
-      AND hits.eventInfo.eventCategory IS NOT NULL
-      AND trafficSource.source in ('google', 'bing')
-      AND trafficSource.medium = 'cpc'
-      AND trafficSource.campaign LIKE '%NB%'
-    GROUP BY
-      date,
-      country,
-      visitorId,
-      visitNumber,
-      source,
-      medium,
-      campaign,
-      content,
-      browser
-  ),
+  SELECT
+    date,
+    CASE
+    -- 2019 Tier 1 countries
+      WHEN geoNetwork.country IN ('United States',  'Germany',  'Canada',  'United Kingdom',  'France') THEN geoNetwork.country
+    -- NOTE: 2018 non-Tier 1 countries are included to report on the tail of
+    -- the spending from last year
+      WHEN geoNetwork.country IN ('Poland', 'Australia','Netherlands','Switzerland') THEN geoNetwork.country
+    -- NOTE: catch-all clause for 2019 Tier 3 countries
+      ELSE 'Tier 3'
+    END AS country,
+    fullVisitorId AS visitorId,
+    visitNumber AS visitNumber,
+    trafficSource.source AS source,
+    trafficSource.medium AS medium,
+    trafficSource.campaign AS campaign,
+    trafficSource.adContent AS content,
+    device.browser AS browser,
+    SUM(IF (hits.eventInfo.eventAction = "Firefox Download", 1, 0)) AS downloads
+  FROM
+    `65789850.ga_sessions_*`, UNNEST(hits) AS hits
+  WHERE
+    _TABLE_SUFFIX NOT IN ('','dev')
+    AND _TABLE_SUFFIX NOT LIKE 'intraday%'
+    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2, 6)
+    AND hits.type = 'EVENT'
+    AND hits.eventInfo.eventCategory IS NOT NULL
+    AND trafficSource.source IN ('google','bing')
+    AND trafficSource.medium = 'cpc'
+    AND trafficSource.campaign LIKE '%NB%'
+  GROUP BY
+    date,
+    country,
+    visitorId,
+    visitNumber,
+    source,
+    medium,
+    campaign,
+    content,
+    browser ),
+
 
   downloads AS (
-    SELECT
-      EXTRACT(MONTH FROM date) AS month_num,
-      country,
-      campaign,
-      SUM(IF(downloads > 0,1,0)) as downloads,
-      SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as non_fx_downloads
-    FROM
-      download_events
-    GROUP BY
-      month_num,
-      country,
-      campaign
-  ),
+  SELECT
+    PARSE_DATE("%Y%m%d", date) AS downloadsDate,
+    content,
+    SUM(IF(downloads > 0, 1, 0)) AS totalDownloads,
+    SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) AS non_fx_downloads
+  FROM
+    download_events
+  GROUP BY
+    downloadsDate,
+    content),
 
-  ltv_new_clients AS (
-    SELECT
-      EXTRACT(MONTH FROM PARSE_DATE('%Y-%m-%d', profile_creation_date)) AS month_num,
-      CASE
-        -- 2019 Tier 1 countries
-        WHEN country = 'US' THEN 'United States'
-        WHEN country = 'DE' THEN 'Germany'
-        WHEN country = 'CA' THEN 'Canada'
-        WHEN country = 'FR' THEN 'France'
-        WHEN country = 'GB' THEN 'United Kingdom'
-        -- NOTE: 2018 non-Tier 1 countries are included to report on the tail of
-        -- the spending from last year
-        WHEN country = 'PL' THEN 'Poland'
-        WHEN country = 'AU' THEN 'Australia'
-        WHEN country = 'NL' THEN 'Netherlands'
-        WHEN country = 'CH' THEN 'Switzerland'
-        -- NOTE: catch-all clause for 2019 Tier 3 countries
-        ELSE 'Tier 3'
-      END AS country,
-      regexp_replace(campaign, r"%257C", "|") as campaign,
-      count(DISTINCT client_id) AS num_installs,
-      SUM(total_clv) AS sum_tLTV,
-      SUM(predicted_clv_12_months) AS sum_pLTV
-    FROM
-      `ltv.latest_sem_clients`
-    WHERE
-      profile_creation_date IS NOT NULL
-      -- NOTE: avoid parsing `profile_creation_date` due to invalid dates
-      AND profile_creation_date >= '2019-01-01'
-      AND profile_creation_date <= '2019-12-31'
-      AND DATE_DIFF(PARSE_DATE('%Y-%m-%d', profile_creation_date), PARSE_DATE('%Y-%m-%d', submission_date_s3), DAY) <= 7
-    GROUP BY
-      month_num,
-      country,
-      campaign
-  ),
 
-  sem_summary AS (
+   installs AS (
+  SELECT
+    PARSE_DATE("%Y%m%d", submission_date_s3) AS installsDate,
+    contentCleaned AS content,
+    SUM(installs) AS installs
+  FROM
+  `ga-mozilla-org-prod-001.telemetry.corpMetrics`
+  WHERE
+    funnelOrigin = 'mozFunnel'
+    AND sourceCleaned IN ('google', 'bing')
+    AND mediumCleaned IN ('cpc')
+    AND campaignCleaned LIKE '%NB%'
+    AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2, 6)
+  GROUP BY
+    installsDate,
+    content),
+
+
+   ltv_new_clients AS (
+   SELECT
+    content,
+    AVG(total_clv) AS avg_tLTV,
+    AVG(predicted_clv_12_months) AS avg_pLTV
+   FROM
+    `ltv.latest_sem_clients`
+   GROUP BY
+    content),
+
+
+   sem_summary AS (
     SELECT
-      fetch_summary.month_num,
+      fetch_summary.fetchDate,
+      downloads.downloadsDate as downloadsDate,
+      fetch_summary.adName,
       fetch_summary.country,
-      SUM(fetch_summary.sum_vendornetspend) AS sum_vendornetspend,
-      SUM(fetch_summary.sum_fetch_downloads) AS sum_fetch_downloads,
-      SUM(downloads.non_fx_downloads) AS sum_non_fx_downloads,
-      SUM(ltv_new_clients.num_installs) AS sum_installs,
-      /*SUM(ltv_new_clients.sum_tLTV) AS sum_tLTV,*/
-      SUM(ltv_new_clients.sum_pLTV) as sum_pLTV
+      SUM(fetch_summary.vendorNetSpend) AS sum_vendorNetSpend,
+      SUM(fetch_summary.fetchDownloads) AS sum_fetch_downloads,
+      SUM(downloads.totalDownloads) AS totalDownloads,
+      SUM(downloads.non_fx_downloads) AS sum_nonFxDownloads,
+      SUM(installs.installs) as installs,
+      ltv_new_clients.avg_pltv,
+      SUM(installs.installs) * ltv_new_clients.avg_pltv as total_pLTV
     FROM
       fetch_summary
-    LEFT JOIN
+    FULL JOIN
       downloads
     ON
-          fetch_summary.month_num = downloads.month_num
-      AND fetch_summary.country  = downloads.country
-      AND fetch_summary.campaign = downloads.campaign
+      fetch_summary.fetchDate = downloads.downloadsDate
+      AND fetch_summary.adname = downloads.content
+    FULL JOIN
+      installs
+    ON
+          fetch_summary.fetchDate = installs.installsDate
+      AND fetch_summary.adname  = installs.content
     LEFT JOIN
       ltv_new_clients
-    ON
-          fetch_summary.month_num = ltv_new_clients.month_num
-      AND fetch_summary.country  = ltv_new_clients.country
-      AND fetch_summary.campaign = ltv_new_clients.campaign
+     ON
+      fetch_summary.adname = ltv_new_clients.content
     GROUP BY
-      fetch_summary.month_num,
-      fetch_summary.country
-  )
+      fetchDate,
+      downloadsDate,
+      country,
+      adname,
+      avg_pltv
+      )
 
-SELECT
-  *,
-  sum_vendornetspend / sum_fetch_downloads AS cpd,
-  sum_vendornetspend / sum_installs AS cpi,
-  sum_pLTV - sum_vendornetspend AS net_cost_of_acquisition,
-  sum_pLTV / sum_vendornetspend AS ltv_mcac
-FROM
-  sem_summary
-ORDER BY 3 DESC
+
+  SELECT
+  FORMAT_DATE("%Y%m", CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as month_num,
+  CASE WHEN country IS NOT NULL THEN country ELSE 'missingAdNameTracking' END as country,
+  SUM(sum_vendorNetSpend) as vendorNetSpend,
+  SUM(sum_fetch_downloads) as fetchDownloadsGA,
+  SUM(totalDownloads) as gaTotalDownloads,
+  SUM(sum_nonFxDownloads) as gaNonFxDownloads,
+  SUM(installs) as installs,
+  SUM(total_pLTV) as pLTV,
+  SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(sum_fetch_downloads)) as CPD_fetch_downloads,
+  SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(installs)) as CPI,
+  SUM(total_pLTV) - SUM(sum_vendorNetSpend) as net_cost_of_acquisition,
+  SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as ltv_mcac
+  FROM sem_summary
+  GROUP BY
+    month_num,
+    country
+  ORDER BY
+    month_num DESC

@@ -1,4 +1,4 @@
--- Used to Populate Paid Search Non-brand Country Campaign Weekly
+-- Used to populate Paid Search Country Non-brand Campaign and Adgroup QTD
 
 WITH
   fetch_sem_spend AS (
@@ -140,6 +140,7 @@ WITH
       fetch_summary.adName,
       fetch_summary.country,
       fetch_summary.campaign,
+      fetch_summary.adgroup,
       SUM(fetch_summary.vendorNetSpend) AS sum_vendorNetSpend,
       SUM(fetch_summary.fetchDownloads) AS sum_fetch_downloads,
       SUM(downloads.totalDownloads) AS totalDownloads,
@@ -168,18 +169,17 @@ WITH
       downloadsDate,
       country,
       campaign,
+      adgroup,
       adname,
       avg_pltv
       )
 
-
-
+-- TODO: Figure out how to filter out blank rows without changing totals across all columns
   SELECT
-  EXTRACT (WEEK FROM (CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END)) as week_num,
-  MIN(CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as week_start,
-  MAX(CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as week_end,
+  FORMAT_DATE("%Y%m", CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as month_num,
   CASE WHEN country IS NOT NULL THEN country ELSE 'missingAdNameTracking' END as country,
   campaign,
+  adgroup,
   SUM(sum_vendorNetSpend) as vendorNetSpend,
   SUM(sum_fetch_downloads) as fetchDownloadsGA,
   SUM(totalDownloads) as gaTotalDownloads,
@@ -192,10 +192,11 @@ WITH
   SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as ltv_mcac
   FROM sem_summary
   GROUP BY
-    week_num,
+    month_num,
     country,
-    campaign
-   ORDER BY
-    week_num DESC,
+    campaign,
+    adgroup
+  ORDER BY
+    month_num DESC,
     country,
     vendorNetSpend DESC

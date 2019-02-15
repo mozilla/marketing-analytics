@@ -19,7 +19,7 @@ WITH
       'Bing')
     -- TODO: Need to check if this excludes any campaigns with no spend but downloads
     AND date BETWEEN DATE(2019,1,1)
-    AND DATE(2019,2,6)
+    AND DATE(2019,2,13)
   GROUP BY
     date,
     adname,
@@ -73,7 +73,7 @@ WITH
   WHERE
     _TABLE_SUFFIX NOT IN ('','dev')
     AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2, 6)
+    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,13)
     AND hits.type = 'EVENT'
     AND hits.eventInfo.eventCategory IS NOT NULL
     AND trafficSource.source IN ('google','bing')
@@ -116,7 +116,7 @@ WITH
     AND sourceCleaned IN ('google', 'bing')
     AND mediumCleaned IN ('cpc')
     AND campaignCleaned LIKE '%NB%'
-    AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2, 6)
+    AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,13)
   GROUP BY
     installsDate,
     content),
@@ -131,6 +131,27 @@ WITH
     `ltv.latest_sem_clients`
    GROUP BY
     content),
+
+   aDAU28Days AS(
+    SELECT
+    content,
+    AVG(additionalUserMetrics.adau_days_28d) avg_adau_days_28d
+    FROM (
+    (SELECT
+      client_id,
+      content
+    FROM
+      `ltv.latest_sem_clients`) AS semClients
+    LEFT JOIN (
+    SELECT
+      client_id,
+      adau_days_28d
+    FROM
+      `ga-mozilla-org-prod-001.ltv.v1_additional_user_metrics_*`
+      WHERE
+      _TABLE_SUFFIX = (SELECT MAX(_table_suffix) FROM `ga-mozilla-org-prod-001.ltv.v1_additional_user_metrics_*`)) AS additionalUserMetrics
+      ON semClients.client_id = additionalUserMetrics.client_id)
+    GROUP BY content),
 
 
    sem_summary AS (
@@ -147,7 +168,8 @@ WITH
       SUM(downloads.non_fx_downloads) AS sum_nonFxDownloads,
       SUM(installs.installs) as installs,
       ltv_new_clients.avg_pltv,
-      SUM(installs.installs) * ltv_new_clients.avg_pltv as total_pLTV
+      SUM(installs.installs) * ltv_new_clients.avg_pltv as total_pLTV,
+      aDAU28Days.avg_adau_days_28d
     FROM
       fetch_summary
     FULL JOIN
@@ -164,6 +186,9 @@ WITH
       ltv_new_clients
      ON
       fetch_summary.adname = ltv_new_clients.content
+    LEFT JOIN
+      aDAU28Days
+    ON fetch_summary.adname = aDAU28Days.content
     GROUP BY
       fetchDate,
       downloadsDate,
@@ -171,7 +196,8 @@ WITH
       campaign,
       adgroup,
       adname,
-      avg_pltv
+      avg_pltv,
+      avg_adau_days_28d
       )
 
 -- TODO: Figure out how to filter out blank rows without changing totals across all columns
@@ -189,7 +215,8 @@ WITH
   SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(sum_fetch_downloads)) as CPD_fetch_downloads,
   SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(installs)) as CPI,
   SUM(total_pLTV) - SUM(sum_vendorNetSpend) as net_cost_of_acquisition,
-  SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as ltv_mcac
+  SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as ltv_mcac,
+  AVG(avg_adau_days_28d) as avg_adau_days_28d
   FROM sem_summary
   GROUP BY
     month_num,

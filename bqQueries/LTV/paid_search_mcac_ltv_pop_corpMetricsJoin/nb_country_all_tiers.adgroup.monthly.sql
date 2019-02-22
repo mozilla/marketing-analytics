@@ -19,7 +19,7 @@ WITH
       'Bing')
     -- TODO: Need to check if this excludes any campaigns with no spend but downloads
     AND date BETWEEN DATE(2019,1,1)
-    AND DATE(2019,2,13)
+    AND DATE(2019,2,20)
   GROUP BY
     date,
     adname,
@@ -73,7 +73,7 @@ WITH
   WHERE
     _TABLE_SUFFIX NOT IN ('','dev')
     AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,13)
+    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,20)
     AND hits.type = 'EVENT'
     AND hits.eventInfo.eventCategory IS NOT NULL
     AND trafficSource.source IN ('google','bing')
@@ -116,7 +116,7 @@ WITH
     AND sourceCleaned IN ('google', 'bing')
     AND mediumCleaned IN ('cpc')
     AND campaignCleaned LIKE '%NB%'
-    AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,13)
+    AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,20)
   GROUP BY
     installsDate,
     content),
@@ -169,7 +169,9 @@ WITH
       SUM(installs.installs) as installs,
       ltv_new_clients.avg_pltv,
       SUM(installs.installs) * ltv_new_clients.avg_pltv as total_pLTV,
-      aDAU28Days.avg_adau_days_28d
+      aDAU28Days.avg_adau_days_28d,
+      ltv_new_clients.avg_tltv,
+      SUM(installs.installs) * ltv_new_clients.avg_tltv as total_tLTV
     FROM
       fetch_summary
     FULL JOIN
@@ -197,12 +199,12 @@ WITH
       adgroup,
       adname,
       avg_pltv,
-      avg_adau_days_28d
+      avg_adau_days_28d,
+      avg_tltv
       )
 
 -- TODO: Figure out how to filter out blank rows without changing totals across all columns
   SELECT
-  FORMAT_DATE("%Y%m", CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as month_num,
   CASE WHEN country IS NOT NULL THEN country ELSE 'missingAdNameTracking' END as country,
   campaign,
   adgroup,
@@ -215,15 +217,15 @@ WITH
   SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(sum_fetch_downloads)) as CPD_fetch_downloads,
   SAFE_DIVIDE(SUM(sum_vendorNetSpend), SUM(installs)) as CPI,
   SUM(total_pLTV) - SUM(sum_vendorNetSpend) as net_cost_of_acquisition,
-  SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as ltv_mcac,
-  AVG(avg_adau_days_28d) as avg_adau_days_28d
+  SAFE_DIVIDE(SUM(total_pLTV), SUM(sum_vendorNetSpend)) as pltv_mcac,
+  AVG(avg_adau_days_28d) as avg_adau_days_28d,
+  sum(total_tLTV) as tLTV,
+  SAFE_DIVIDE(SUM(total_tLTV), SUM(sum_vendorNetSpend)) as tltv_mcac
   FROM sem_summary
   GROUP BY
-    month_num,
     country,
     campaign,
     adgroup
   ORDER BY
-    month_num DESC,
-    country,
+    country DESC,
     vendorNetSpend DESC

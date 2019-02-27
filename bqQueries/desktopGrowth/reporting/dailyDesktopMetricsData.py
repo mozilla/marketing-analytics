@@ -1,16 +1,220 @@
 # This job pulls desktop related metrics data from telemetry, cleans and prepares it for joining with google analytics acquisition data
-# Final dataset used to power the Final Dataset used to power the Datastudio Firefox Desktop Growth Dashboards
-# Sources are telemetry and mozilla.org google analytics data stored in bigquery
+# Dataset is an interim dataset that is joined with google analytics
+# Sources are telemetry
 
 import os
-from google.cloud import bigquery
+from google.cloud import bigquery, bqclient
 from datetime import datetime, timedelta
 import logging
+import pandas as pd
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variable to authenticate using service account
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+credentialsFxTelemetry = '/Users/gkaberere/Google Drive/Github/marketing-analytics/bqQueries/desktopGrowth/reporting/moz-fx-data-derived-datasets-marketing-analytics.json'
+credentialsMarketingAnalytics = '/Users/gkaberere/Google Drive/Github/marketing-analytics/App Engine - moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+telemetryProject = 'moz-fx-data-derived-datasets'
+mktgAnalyticsProject = 'ga-mozilla-org-prod-001'
+
+# Read the data from telemetry
+def read_desktop_usage_data(dataset_id, table_name, next_load_date, end_load_date):
+    '''
+    Queries telemetry tables new profiles and results to a permanent table in marketing analytics bigquery
+    :param dataset_id: Name of dataset to be loaded into
+    :param table_name: Name of table to be loaded into
+    :param next_load_date: Earliest date to be loaded into table_name
+    :param end_load_date: Latest date to be loaded into table_name
+    :return:
+    '''
+
+    bqClient = bigquery.Client(credentials=credentialsFxTelemetry, project=telemetryProject)
+
+    # Set the dataset_id to the dataset used to store temporary results.
+    dataset_id = "analysis"
+    dataset_ref = bqClient.dataset(dataset_id)
+    dataset = bigquery.Dataset(dataset_ref)
+
+    # Remove tables after 24 hours.
+    #dataset.default_table_expiration_ms = 1000 * 60 * 60 * 24
+
+    #bqclient.create_dataset(dataset)  # API request.
+
+    query_string = """
+    SELECT
+    CONCAT('https://stackoverflow.com/questions/',
+    CAST(id as STRING)) as url,
+view_count
+FROM `bigquery-public-data.stackoverflow.posts_questions`
+WHERE tags like '%google-bigquery%'
+ORDER BY view_count DESC
+    """
+
+    
+
+
+
+
+
+
+
+# Pass the data to a pandas dataframe
+
+
+# Load the data to a BQ table
+
+
+
+# End
+
+
+
+def read_desktop_usage_data(dataset_id, table_name, next_load_date, end_load_date):
+    '''
+    Queries telemetry tables and loads results to a permanent table in marketing analytics bigquery
+    :param dataset_id: Name of dataset to be loaded into
+    :param table_name: Name of table to be loaded into
+    :param next_load_date: Earliest date to be loaded into table_name
+    :param end_load_date: Latest date to be loaded into table_name
+    :return:
+    '''
+    while next_load_date < end_load_date:
+        # Set dates required for loading new data
+        next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
+        logging.info(f'Starting load for next load date: {next_load_date}')
+        client = bigquery.Client(project='ga-mozilla-org-prod-001')
+        load_dataset_id = dataset_id
+        load_table_name = table_name
+        load_table_suffix = next_load_date
+        load_table_id = f'{load_table_name.lower()}_{load_table_suffix}'
+
+        # Configure load job
+        dataset_ref = client.dataset(load_dataset_id)
+        table_ref = dataset_ref.table(load_table_id)
+        load_job_config = bigquery.QueryJobConfig()  # load job call
+        load_job_config.schema = [
+            bigquery.SchemaField('date', 'DATE'),
+            bigquery.SchemaField('snippetID', 'STRING'),
+            bigquery.SchemaField('country', 'STRING'),
+            bigquery.SchemaField('site', 'STRING'),
+            bigquery.SchemaField('impression', 'INTEGER'),
+            bigquery.SchemaField('snippetBlocked', 'INTEGER'),
+            bigquery.SchemaField('clicks', 'INTEGER'),
+            bigquery.SchemaField('otherSnippetInteractions', 'INTEGER'),
+            bigquery.SchemaField('sessions', 'INTEGER'),
+            bigquery.SchemaField('addonInstallsTotal', 'INTEGER'),
+            bigquery.SchemaField('addonInstallsGoalComp', 'INTEGER'),
+            bigquery.SchemaField('themeInstallsTotal', 'INTEGER'),
+            bigquery.SchemaField('themeInstallsGoalComp', 'INTEGER'),
+            bigquery.SchemaField('donations', 'INTEGER')
+        ]  # Define schema
+        load_job_config.time_partitioning = bigquery.TimePartitioning(
+            type_=bigquery.TimePartitioningType.DAY,
+            field='date',
+        )
+        load_job_config.write_disposition = 'WRITE_APPEND'  # Options are WRITE_TRUNCATE, WRITE_APPEND, WRITE_EMPTY
+        load_job_config.destination = table_ref
+        sql = f"""
+        WITH parameters as(
+        SELECT
+            PARSE_DATE('%Y-%m-%d', '2019-02-20') as startDate,
+            PARSE_DATE('%Y-%m-%d', '2019-02-20') as endDate),
+        
+        usageData as(
+        SELECT
+            submission_date as submission,
+            CASE WHEN country IS NULL THEN '' ELSE country END as country,
+            CASE WHEN source IS NULL THEN '' ELSE source END as source,
+            CASE WHEN medium IS NULL THEN '' ELSE medium END as medium,
+            CASE WHEN campaign IS NULL THEN '' ELSE campaign END as campaign,
+            CASE WHEN content IS NULL THEN '' ELSE content END as content,
+            CASE WHEN distribution_id IS NULL THEN '' ELSE distribution_id END as distribution_id,
+            SUM(dau) as dau,
+            SUM(mau) as mau
+        FROM `moz-fx-data-derived-datasets.analysis.firefox_desktop_exact_mau28_by_dimensions_v1`
+        WHERE
+            submission_date >= (SELECT parameters.startDate from parameters)
+            AND submission_date <= (SELECT parameters.endDate from parameters)
+        GROUP BY
+            submission,
+            country,
+            source,
+            medium,
+            campaign,
+            content,
+            distribution_id),
+
+        installData as (
+        SELECT
+            submission,
+            CASE WHEN metadata.geo_country IS NULL THEN '' ELSE metadata.geo_country END as country,
+            CASE WHEN environment.settings.attribution.source IS NULL THEN '' ELSE environment.settings.attribution.source END as source,
+            CASE WHEN environment.settings.attribution.medium IS NULL THEN '' ELSE environment.settings.attribution.medium END as medium,
+            CASE WHEN environment.settings.attribution.campaign IS NULL THEN '' ELSE environment.settings.attribution.campaign END as campaign,
+            CASE WHEN environment.settings.attribution.content IS NULL THEN '' ELSE environment.settings.attribution.content END as content,
+            CASE WHEN environment.partner.distribution_id IS NULL THEN '' ELSE environment.partner.distribution_id END as distribution_id,
+            COUNT(DISTINCT client_id) as installs
+        FROM
+            `moz-fx-data-derived-datasets.telemetry.telemetry_new_profile_parquet_v2`
+        WHERE
+            submission >= (SELECT parameters.startDate FROM parameters)
+            AND submission <= (SELECT parameters.endDate FROM parameters)
+        GROUP BY
+            submission,
+            country,
+            source,
+            medium,
+            campaign,
+            content,
+            distribution_id),
+            
+        desktopKeyMetrics as (
+        SELECT
+            usageData.submission,
+            usageData.country,
+            usageData.source,
+            usageData.medium,
+            usageData.campaign,
+            usageData.content,
+            usageData.distribution_id,
+            usageData.dau,
+            usageData.mau,
+            installData.installs
+        FROM
+            usageData
+        FULL JOIN
+            installData
+        ON  
+            usageData.submission = installData.submission
+            AND usageData.country = installData.country
+            AND usageData.source = installData.source
+            AND usageData.medium = installData.medium
+            AND usageData.campaign = installData.campaign
+            AND usageData.content = installData.content
+            AND usageData.distribution_id = installData.distribution_id)
+        
+        SELECT * FROM desktopKeyMetrics
+        """
+
+        # Run Load Job
+        query_job = client.query(
+            sql,
+            # Location must match that of the dataset(s) referenced in the query
+            # and of the destination table.
+            location='US',
+            job_config=load_job_config)  # API request - starts the query
+
+        query_job.result()  # Waits for the query to finish
+        logging.info(f'Query results loaded to table {table_ref.path}')
+
+        # Set next_load_date
+        next_load_date = datetime.strptime(next_load_date, '%Y%m%d') + timedelta(1)
+    return
+
+
+
+
+
+
 
 
 def calc_last_load_date(dataset_id, table_name):

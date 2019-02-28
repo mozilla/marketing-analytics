@@ -1,0 +1,7 @@
+
+SELECT 'US' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28 DAY) AND country = 'US' UNION ALL
+SELECT 'GB' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28 DAY) AND country = 'GB' UNION ALL
+SELECT 'FR' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28 DAY) AND country = 'FR' UNION ALL
+SELECT 'CA' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28DAY) AND country = 'CA' UNION ALL
+SELECT 'DE' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28 DAY) AND country = 'DE' UNION ALL
+SELECT 'Global' as country, max(submission_date_s3) AS d, COUNT(DISTINCT client_id) AS mau28 FROM telemetry.clients_daily_v6 WHERE submission_date_s3 <= '2019-02-20' AND submission_date_s3 > date_add('2019-02-20', INTERVAL -28 DAY)

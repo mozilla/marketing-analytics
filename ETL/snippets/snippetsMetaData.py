@@ -1,114 +1,48 @@
 import logging
-import requests
-import csv
 import os
 import urllib3
 import tempfile
-from google.cloud.storage import blob
+from google.cloud.storage import Blob
 from google.cloud import storage
 import pandas as pd
 
-date = '20190227f'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics/App Engine - moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+date = '20190227g'
 permanent_dir = '/Users/gkaberere/spark-warehouse/testSnippet/metaData'
 temp_dir = tempfile.mkdtemp(prefix='snippet_metadata')
 temp_file_name = os.path.join(permanent_dir, f'snippets_metadata_{date}.csv') # Change to temp when needed
 url = f'''https://s3-us-west-2.amazonaws.com/snippets-prod-us-west/metadata/my3zy7my7ca1pa9si1ta3ke7wu9ni7re4tu8zo8d/snippets_metadata_20190227.csv'''
+bucket = 'snippets-data-transfer'
+blobname = f'metaData/{date}.csv'
+csv_file_location = f'/users/gkaberere/spark-warehouse/testSnippet/metaData/snippets_metadata_{date}.csv'
 
 
 def download_metadata_file(url, temp_file_name):
     with open(temp_file_name, 'wb') as csvfile:
         http = urllib3.PoolManager()
         response = http.request('GET', url)
-        response.status
+        response.status # use for logging
         csvfile.write(response.data)
     return csvfile
 
-download_metadata_file(url, temp_file_name)
 
-
-
-#### Downloading file to local works. Next test uploading from local to Google Cloud storage
-
-
-bucket = 'gs://snippets-data-transfer/'
-
-def upload(file, bucket):
+def upload_to_gcs(csvfile, bucket, blobname):
    client = storage.Client()
    bucket = client.get_bucket(bucket)
-   blob = Blob(blobname, bucket)
-   blob.upload_from_filename(csvfile)
-   gcslocation = 'gs://snippets-data-transfer/metaData/'
-   logging.info('Uploaded {} ...'.format(gcslocation))
+   blob = bucket.blob(blobname)
+   blob.upload_from_filename(filename=csvfile)
+   gcslocation = f'gs://{bucket}/{blobname}'
+   logging.info(f'Uploaded {gcslocation} ...')
    return gcslocation
 
+#csvfile = download_metadata_file(url, temp_file_name)
+upload_to_gcs(csv_file_location, bucket, blobname)
+
+
+### upload to cloud storage works now next is to do the handoff using temporary file storage
 
 
 
 
 
-bucket = 'gs://snippets-data-transfer/metaData/'
-client = storage.Client()
-bucket = client.get_bucket(bucket_name=bucket)
-blob = Blob(blobname, bucket)
-
-
-
-
-
-
-
-
-    def test_urllib3():
-        import urllib3
-        http = urllib3.PoolManager()
-        response = http.request('GET', _URL)
-        response.status
-
-
-    return response.data
-
-
-
-#import requests
-#url = f'''https://s3-us-west-2.amazonaws.com/snippets-prod-us-west/metadata/my3zy7my7ca1pa9si1ta3ke7wu9ni7re4tu8zo8d/snippets_metadata_20190227.csv'''
-#data = requests.get(url, verify=True).text
-#print(data)
-
-
-
-
-import requests
-import csv
-import os
-
-temp_file_name = 'temp_csv.csv'
-url = 'http://url.to/file.csv'
-download = requests.get(url)
-
-with open(temp_file_name, 'w') as temp_file:
-    temp_file.writelines(download.content)
-
-with open(temp_file_name, 'rU') as temp_file:
-    csv_reader = csv.reader(temp_file, dialect=csv.excel_tab)
-    for line in csv_reader:
-        print line
-
-# delete the temp file after process
-os.remove(temp_file_name)
-
-
-
-#bucket_url = "gs://snippets-data-transfer/metaData/"
-
-#client = storage.Client('ga-mozilla-org-prod-001')
-#bucket = client.get_bucket(bucket_url)
-#blob = bucket.blob('test')
-#blob.upload
-
-
-
-#bucket = client.get_bucket(bucket_url)
-
-#blob = bucket.get_blob(file_path)
-#blob.upload_from_filename(filename=file_path)
 

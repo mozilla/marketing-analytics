@@ -1,7 +1,7 @@
 WITH parameters as(
 SELECT
-  PARSE_DATE('%Y-%m-%d', '2019-02-20') as startDate,
-  PARSE_DATE('%Y-%m-%d', '2019-02-20') as endDate),
+  PARSE_DATE('%Y-%m-%d', '2018-01-01') as startDate,
+  PARSE_DATE('%Y-%m-%d', '2019-02-27') as endDate),
 
 usageData as(
 SELECT

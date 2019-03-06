@@ -4,17 +4,20 @@ import urllib3
 import tempfile
 from google.cloud.storage import Blob
 from google.cloud import storage
-import pandas as pd
+from datetime import datetime
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics/App Engine - moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
-date = '20190227g'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/gkLocalAppsServiceAccount.json'
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics/App Engine - moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+current_date = datetime.now()
+file_date = datetime.strftime(current_date, '%Y%m%d')
+
 permanent_dir = '/Users/gkaberere/spark-warehouse/testSnippet/metaData'
 temp_dir = tempfile.mkdtemp(prefix='snippet_metadata')
-temp_file_name = os.path.join(permanent_dir, f'snippets_metadata_{date}.csv') # Change to temp when needed
-url = f'''https://s3-us-west-2.amazonaws.com/snippets-prod-us-west/metadata/my3zy7my7ca1pa9si1ta3ke7wu9ni7re4tu8zo8d/snippets_metadata_20190227.csv'''
+temp_file_name = os.path.join(permanent_dir, f'snippets_metadata_{file_date}.csv') # Change to temp when needed
+url = f'''https://s3-us-west-2.amazonaws.com/snippets-prod-us-west/metadata/my3zy7my7ca1pa9si1ta3ke7wu9ni7re4tu8zo8d/snippets_metadata_{file_date}.csv'''
 bucket = 'snippets-data-transfer'
-blobname = f'metaData/{date}.csv'
-csv_file_location = f'/users/gkaberere/spark-warehouse/testSnippet/metaData/snippets_metadata_{date}.csv'
+blobname = f'metaData/snippets_metadata_{file_date}.csv'
+csv_file_location = f'/users/gkaberere/spark-warehouse/testSnippet/metaData/snippets_metadata_{file_date}.csv'
 
 
 def download_metadata_file(url, temp_file_name):
@@ -35,14 +38,8 @@ def upload_to_gcs(csvfile, bucket, blobname):
    logging.info(f'Uploaded {gcslocation} ...')
    return gcslocation
 
-#csvfile = download_metadata_file(url, temp_file_name)
+csvfile = download_metadata_file(url, temp_file_name)
 upload_to_gcs(csv_file_location, bucket, blobname)
 
 
 ### upload to cloud storage works now next is to do the handoff using temporary file storage
-
-
-
-
-
-

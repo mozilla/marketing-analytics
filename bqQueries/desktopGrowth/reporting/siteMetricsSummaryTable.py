@@ -230,8 +230,7 @@ def run_site_metrics_update():
     # Find the last date when data was loaded into the table
     read_dataset_id = 'desktop'
     read_table_name = 'website_metrics'
-    last_load_date = '20180101'
-    #last_load_date = calc_last_load_date(read_dataset_id, read_table_name)
+    last_load_date = calc_last_load_date(read_dataset_id, read_table_name)
 
     # Set dates required for loading new data
     last_load_date = datetime.strptime(last_load_date, '%Y%m%d')

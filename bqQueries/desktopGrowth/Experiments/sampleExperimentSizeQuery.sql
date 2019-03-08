@@ -1,5 +1,5 @@
 WITH parameters as(
-SELECT '20190127' as startDate, '20190223' as endDate, /*'de' as locale,*/ '%/de/firefox/new/%' as landingPage),
+SELECT '20190127' as startDate, '20190223' as endDate, /*'en-ca' as locale,*/ '%/en-CA/firefox/new/%' as landingPage),
 
 sessionsData as(
 SELECT
@@ -91,7 +91,8 @@ LEFT JOIN
 ON
   sessionsSummary.visitIdentifier = downloadsData.visitIdentifier
 /*WHERE
-  browser != 'Firefox'*/
+  medium IN ('organic', 'referral', '(none)')
+  AND browser != 'Firefox'*/
 GROUP BY
   date, country, locale, source, medium, campaign, content, browser, visitIdentifier
 )

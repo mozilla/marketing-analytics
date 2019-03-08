@@ -155,8 +155,9 @@ SELECT
   AND trafficSource.medium = 'snippet'
   GROUP BY 1,2,3
   ORDER BY 2 ASC,4 DESC
-)
+),
 
+aggregates AS(
 -- Aggregate by date, snippetID, country and site
 SELECT
   PARSE_DATE('%Y%m%d', impressions.date) as date,
@@ -355,4 +356,23 @@ SELECT
   NULL as donations
 FROM `ga-mozilla-org-prod-001.snippets.snippets_telemetry_tracking_20190108`
 GROUP BY 1,2,3,4
-ORDER BY 5 DESC
+ORDER BY 5 DESC),
+
+metaData as (
+SELECT
+  *
+FROM `ga-mozilla-org-prod-001.snippets.snippets_metadata`)
+
+SELECT
+  aggregates.*,
+  metaData.name,
+  metaData.campaign,
+  metaData.category,
+  metaData.url,
+  metaData.body
+FROM
+  aggregates
+LEFT JOIN
+  metaData
+ON
+  aggregates.snippetID = metaData.ID

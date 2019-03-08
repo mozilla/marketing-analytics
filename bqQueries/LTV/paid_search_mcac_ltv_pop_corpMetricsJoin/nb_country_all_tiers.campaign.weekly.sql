@@ -19,7 +19,7 @@
           'Bing')
         -- TODO: Need to check if this excludes any campaigns with no spend but downloads
         AND date BETWEEN DATE(2019,1,1)
-        AND DATE(2019,2,27)
+        AND DATE(2019,3,6)
       GROUP BY
         date,
         adname,
@@ -34,6 +34,7 @@
         date AS fetchDate,
         country,
         adname,
+        vendor,
         campaign,
         adgroup,
         SUM(vendorNetSpend) AS vendorNetSpend,
@@ -44,6 +45,7 @@
         fetchDate,
         country,
         adname,
+        vendor,
         campaign,
         adgroup),
 
@@ -73,7 +75,7 @@
       WHERE
         _TABLE_SUFFIX NOT IN ('','dev')
         AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-        AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,27)
+        AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,6)
         AND hits.type = 'EVENT'
         AND hits.eventInfo.eventCategory IS NOT NULL
         AND trafficSource.source IN ('google','bing')
@@ -116,7 +118,7 @@
         AND sourceCleaned IN ('google', 'bing')
         AND mediumCleaned IN ('cpc')
         AND campaignCleaned LIKE '%NB%'
-        AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019, 2,27)
+        AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,6)
       GROUP BY
         installsDate,
         content),
@@ -161,6 +163,7 @@
           fetch_summary.fetchDate,
           downloads.downloadsDate as downloadsDate,
           fetch_summary.adName,
+          fetch_summary.vendor,
           fetch_summary.country,
           fetch_summary.campaign,
           SUM(fetch_summary.vendorNetSpend) AS sum_vendorNetSpend,
@@ -198,6 +201,7 @@
           country,
           campaign,
           adname,
+          vendor,
           avg_pltv,
           avg_adau_days_28d,
           avg_tltv
@@ -211,6 +215,7 @@
       MAX(CASE WHEN fetchDate IS NULL THEN downloadsDate ELSE fetchDate END) as week_end,
       CASE WHEN country IS NOT NULL THEN country ELSE 'missingAdNameTracking' END as country,
       campaign,
+      vendor,
       SUM(sum_vendorNetSpend) as vendorNetSpend,
       SUM(sum_fetch_downloads) as fetchDownloadsGA,
       SUM(totalDownloads) as gaTotalDownloads,
@@ -228,7 +233,8 @@
       GROUP BY
         week_num,
         country,
-        campaign
+        campaign,
+        vendor
        ORDER BY
         week_num DESC,
         country,

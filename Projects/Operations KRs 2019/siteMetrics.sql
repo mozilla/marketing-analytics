@@ -42,8 +42,8 @@ FROM
 FROM
   `ga-mozilla-org-prod-001.65789850.ga_sessions_*`
 WHERE
-  _TABLE_SUFFIX >= '20180101'
-  AND _TABLE_SUFFIX <= '20181231'
+  _TABLE_SUFFIX >= '20190101'
+  AND _TABLE_SUFFIX <= '20191231'
 GROUP BY 1,2,3,4)
 GROUP BY 1,2,3
 ) AS sessionsTable
@@ -86,8 +86,8 @@ FROM
   `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
   UNNEST (hits) AS hits
 WHERE
-  _TABLE_SUFFIX >= '20180101'
-  AND _TABLE_SUFFIX <= '20181231'
+  _TABLE_SUFFIX >= '20190101'
+  AND _TABLE_SUFFIX <= '20191231'
   AND hits.type = 'EVENT'
   AND hits.eventInfo.eventCategory IS NOT NULL
   AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"

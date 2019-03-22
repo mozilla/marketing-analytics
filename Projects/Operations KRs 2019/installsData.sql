@@ -46,8 +46,8 @@ FROM (
   FROM
     `ga-mozilla-org-prod-001.telemetry.corpMetrics`
   WHERE
-    submission_date_s3 >= '20180101'
-    AND submission_date_s3 <= '20181231'
+    submission_date_s3 >= '20190101'
+    AND submission_date_s3 <= '20191231'
   GROUP BY 1,2,3
   ORDER BY 1,2,5 DESC)
 GROUP BY 1,2,3
@@ -78,7 +78,7 @@ UNION ALL
   FROM
     `ga-mozilla-org-prod-001.telemetry.corpMetrics`
   WHERE
-    submission_date_s3 >= '20180101'
-    AND submission_date_s3 <= '20181231'
+    submission_date_s3 >= '20190101'
+    AND submission_date_s3 <= '20191231'
   GROUP BY 1,2,3
   ORDER BY 1,2,5 DESC)

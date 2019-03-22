@@ -6,7 +6,7 @@ mobile_clients = spark.read.option('mergeSchema', 'true').parquet('s3://net-moza
 
 # Reduce data to fields and values of interest
 mobile = mobile_clients.filter("submission_date_s3 >= '20170101' AND submission_date_s3 <= '20171231'").select('submission_date_s3', 'client_id', 'app_name', 'os', 'osversion', 'seq', 'metadata.normalized_channel')
-mobile = mobile.filter(mobile.os.isin("Android", "iOS") & mobile.app_name.isin('Fennec', 'Focus', 'Zerda') & mobile.normalized_channel.isin('release'))
+mobile = mobile.filter(mobile.app_name.isin('Fennec', 'Focus', 'Zerda', '') & mobile.normalized_channel.isin('release'))
 mobile = mobile.withColumn('period', mobile.submission_date_s3.substr(1,6))
 
 testMAU = mobile.groupBy('period','app_name', 'os').agg(countDistinct('client_id'))
@@ -14,13 +14,13 @@ testMAU = mobile.groupBy('period','app_name', 'os').agg(countDistinct('client_id
 # Find 2018/2017 Installs / new clients
 installs = mobile_clients.filter("submission_date_s3 >= '20170101' AND submission_date_s3 <= '20171231' AND seq == '1'").groupBy(col('client_id').alias('installsClientID'), col('app_name'), col('os')).agg(min('submission_date_s3').alias('minSubmissionDateS3'))
 
-# Join installs to MAU to get in year acquisitions
+# Join installs to 2019DesktopKpis to get in year acquisitions
 mobile = mobile.alias('mobile')
 installs = installs.alias('installs')
 mobileJoin = mobile.join(installs, (mobile.client_id == installs.installsClientID) & (mobile.app_name == installs.app_name) & (mobile.os == installs.os), 'left')
 mobileJoin = mobileJoin.withColumn('acqSegment', when(mobileJoin.minSubmissionDateS3.isNull(), 'existing').otherwise('new2017'))
 
-MAU = mobileJoin.groupBy('period','mobile.app_name', 'mobile.os', 'acqSegment').agg(countDistinct('client_id').alias('MAU'))
+MAU = mobileJoin.groupBy('period','mobile.app_name', 'mobile.os', 'acqSegment').agg(countDistinct('client_id').alias('2019DesktopKpis'))
 MAU.coalesce(1).write.option("header", "true").csv(
         's3://net-mozaws-prod-us-west-2-pipeline-analysis/gkabbz/adHoc/testMAUMobile2017.csv')
 
@@ -28,7 +28,7 @@ MAU.coalesce(1).write.option("header", "true").csv(
 #rsync -av gkabbz-001:/home/hadoop/sparkAnalysis/adHoc /Users/gkaberere/spark-warehouse/adHoc
 
 
-# Calculate MAU by Client_id
+# Calculate 2019DesktopKpis by Client_id
 window_28_days = Window\
     .partitionBy(col('client_id'))\
     .orderBy(col('submission_date_s3'))\
@@ -53,13 +53,13 @@ mobile_mau_by_platform = mobile\
 installs = mobile.filter("submission_date_s3 >= '20180101' AND seq == '1'").groupBy(col('client_id').alias('installsClientID')).agg(min('submission_date_s3').alias('minSubmissionDateS3'))
 installs.persist()
 
-# Join installs to MAU to get in year acquisitions
+# Join installs to 2019DesktopKpis to get in year acquisitions
 mobile = mobile.alias('mobile')
 installs = installs.alias('installs')
 mobileJoin = mobile.join(installs, (mobile.client_id == installs.installsClientID), 'left')
 mobileJoin.persist()
 
-# Aggregate MAU by day
+# Aggregate 2019DesktopKpis by day
 
 testMAU = mobileJoin.filter("submission_date_s3 >= '20181127' AND app_name = 'Fennec' AND os = 'Android'").select('submission_date_s3', 'client_id', 'app_name', 'os', 'minSubmissionDateS3')
 testMAU = testMAU.withColumn('acqSegment', when(testMAU.minSubmissionDateS3.isNull(), 'existing').otherwise('new2018'))

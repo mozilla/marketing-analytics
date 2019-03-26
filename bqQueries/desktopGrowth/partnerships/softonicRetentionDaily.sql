@@ -1,3 +1,5 @@
+-- Used to compare softonic retention rates to overall retention to support funding request - https://docs.google.com/spreadsheets/d/1ZYs88-g9R3-GQ1Ubl-wNdrohdxkDTBnEqLjaal7JaL0/edit#gid=0
+
 WITH params as (
 SELECT DATE("2019-03-01") as startDate, DATE("2019-03-01") as endDate
 ),

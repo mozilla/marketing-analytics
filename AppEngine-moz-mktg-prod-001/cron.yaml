@@ -16,3 +16,9 @@ cron:
   schedule: every day 10:00
   timezone: US/Eastern
   target: production
+
+- description : Retrieve desktop usage data
+  url : /desktopCorporateMetrics
+  schedule: every day 9:00
+  timezone: US/Eastern
+  target: production

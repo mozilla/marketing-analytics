@@ -24,6 +24,9 @@ handlers:
 - url: /snippetsTelemetryPull
   script: app.app
 
+- url: /desktopCorporateMetrics
+  script: app.app
+
 - url: /.*
   script: app.app
 

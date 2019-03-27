@@ -4,6 +4,7 @@ import snippetPerformanceLoadJob
 import snippetsMetaDataLoadJob
 import snippetsTelemetryDataLoadJob
 import flask
+import dailyDesktopTelemetryRetrieveJob
 
 # [START Config]
 app = flask.Flask(__name__)
@@ -25,6 +26,10 @@ def snippet_metadata_load():
 @app.route('/snippetsTelemetryPull')
 def snippet_telemetry_load():
     return snippetsTelemetryDataLoadJob.run_snippets_telemetry_update()
+
+@app.route('/desktopCorporateMetrics')
+def daily_desktop_corp_metrics_load():
+    return dailyDesktopTelemetryRetrieveJob.run_desktop_telemetry_retrieve()
 
 if __name__ == '__main__':
     # This is used when running locally. Gunicorn is used to run the

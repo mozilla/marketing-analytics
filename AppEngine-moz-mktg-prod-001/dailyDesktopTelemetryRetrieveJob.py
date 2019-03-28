@@ -531,6 +531,9 @@ def run_desktop_telemetry_retrieve():
         data = redefine_source_medium(data)
         data = standardize_country_names(data, load_project)
         load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name, next_load_date)
+        
+        # Set next load date
+        next_load_date = next_load_date + timedelta(1)
     return
 
 if __name__ == '__main__':

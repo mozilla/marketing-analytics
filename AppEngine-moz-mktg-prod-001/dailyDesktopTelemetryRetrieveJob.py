@@ -449,17 +449,11 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
     #                                               '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
 
-    logging.info(f'{job_name}: load_desktop_usage_data - saving file to temp location')
-    #Save file in temporary location - to enable load from csv as opposed to dataframe so as to better control load job configuration
-    temp_dir = tempfile.mkdtemp(prefix='desktop_usage_metrics')
-    csvfile = os.path.join(temp_dir, f'desktop_usage_metrics_{next_load_date}.csv')
-    file = open(csvfile, 'w')
-    data.to_csv(file, index=False, header=True, encoding='utf-8')
-    file.close()
 
     # Set dates required for loading new data
     next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
     logging.info(f'{job_name}: load_desktop_usage_data - Starting load for next load date: {next_load_date}')
+    load_table_name = f'{load_table_name.lower()}_{next_load_date}'
 
     client = bigquery.Client(project=load_project)
 
@@ -493,23 +487,16 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     job_config.source_format = bigquery.SourceFormat.CSV
     job_config.max_bad_records = 10  # number of bad records allowed before job fails
 
-    # TODO: remove file path below - used for testing due to pandas save csv error
-    #fileName = '/Users/gkaberere/Google Drive/Github/marketing-analytics/bqQueries/desktopGrowth/reporting/testLoadData.csv'
 
     # Run Load Job
-    with open(csvfile, 'rb') as source_file:
-        job = client.load_table_from_file(
-            source_file,
-            table_ref,
-            location='US',  # Must match the destination dataset location.
-            job_config=job_config)  # API request
+    job = client.load_table_from_dataframe(
+        data,
+        table_ref,
+        location='US',  # Must match the destination dataset location.
+        job_config=job_config)  # API request
 
     job.result()  # Waits for table load to complete.
     logging.info(f'{job_name}: load_desktop_usage_data - Loaded {job.output_rows} rows into {table_ref.path}')
-
-    logging.debug(f'Cleaning up - removing {temp_dir}')
-    shutil.rmtree(temp_dir)
-
     return None
 
 
@@ -532,8 +519,8 @@ def run_desktop_telemetry_retrieve():
 
     # Set dates required for loading new data
     #last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
-    next_load_date = date(2019, 1, 1)
-    end_load_date = date(2019, 1, 2)
+    next_load_date = date(2018, 1, 1)
+    end_load_date = date(2019, 3, 25)
     # ToDO: When ready to run automatically remove manually set line above
     #next_load_date = last_load_date + timedelta(1)
 

@@ -19,7 +19,7 @@
           'Bing')
         -- TODO: Need to check if this excludes any campaigns with no spend but downloads
         AND date BETWEEN DATE(2019,1,1)
-        AND DATE(2019,3,20)
+        AND DATE(2019,3,27)
       GROUP BY
         date,
         adname,
@@ -75,7 +75,7 @@
       WHERE
         _TABLE_SUFFIX NOT IN ('','dev')
         AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-        AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,20)
+        AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,27)
         AND hits.type = 'EVENT'
         AND hits.eventInfo.eventCategory IS NOT NULL
         AND trafficSource.source IN ('google','bing')
@@ -108,17 +108,17 @@
 
        installs AS (
       SELECT
-        PARSE_DATE("%Y%m%d", submission_date_s3) AS installsDate,
+        submission AS installsDate,
         contentCleaned AS content,
         SUM(installs) AS installs
       FROM
-      `ga-mozilla-org-prod-001.telemetry.corpMetrics`
+      `ga-mozilla-org-prod-001.desktop.desktop_corp_metrics_*`
       WHERE
         funnelOrigin = 'mozFunnel'
         AND sourceCleaned IN ('google', 'bing')
         AND mediumCleaned IN ('cpc')
         AND campaignCleaned LIKE '%NB%'
-        AND PARSE_DATE('%Y%m%d', submission_date_s3) BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,20)
+        AND submission BETWEEN DATE(2019, 1, 1) AND DATE(2019,3,27)
       GROUP BY
         installsDate,
         content),

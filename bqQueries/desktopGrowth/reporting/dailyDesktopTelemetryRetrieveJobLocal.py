@@ -1,3 +1,7 @@
+# This job pulls desktop related metrics data from the  telemetry GCP Project and saves summarized copy
+# in the Marketing GCP Project for use in dashboarding, reporting and adhoc analysis
+# Sources are telemetry
+
 import os
 from google.cloud import bigquery
 from datetime import datetime, timedelta, date
@@ -12,6 +16,94 @@ import shutil
 job_name = 'telemetry_desktop_usage_metrics_retrieve'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
+# Set environment variables
+#TODO: Remove local file reference prior to pushing to app engine
+#os.environ['desktop_environment_variables'] = 'desktopTelemetryEnvVariables.json'
+os.environ['desktop_environment_variables'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics/bqQueries/' \
+                                              'desktopGrowth/reporting/desktopTelemetryEnvVariables.json'
+
+#TODO: Change path from local to environment file
+with open('desktopTelemetryEnvVariables.json') as json_file:
+    variables = json.load(json_file)
+    marketing_project_var = variables['marketing_project']
+    telemetry_project_var = variables['telemetry_project']
+
+current_date = date.today()
+seven_days_ago = current_date-timedelta(7)
+
+
+def calc_last_load_date(project,dataset_id, table_name):
+    '''
+    Finds the last date loaded into table by table_suffix so as to set starting point for next days pull
+    :param project: Name of project
+    :param dataset_id: Name of dataset
+    :param table_name: Name of table
+    :return last_load_date: the last table suffix of the table_name
+    '''
+
+    #TODO: Change path from local to environment variable
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
+                                                   '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+
+    # Set the query
+    client = bigquery.Client(project=project)
+    job_config = bigquery.QueryJobConfig()
+    sql = f"""
+    SELECT
+    max(_table_suffix) AS last_load_date
+    FROM
+    `{project}.{dataset_id}.{table_name}_*`
+    """
+    # Run the query
+    read_query = client.query(
+        sql,
+        location='US',
+        job_config=job_config)  # API request - starts the query
+    #  Assign last date to last_load_date variable
+    for row in read_query:
+        logging.info(f'{job_name}: Last load into {table_name} was for {row.last_load_date}')
+        return row.last_load_date
+    return None
+
+
+def calc_max_data_availability(project, dataset_id, table_name, date_field):
+    '''
+        Finds the last date loaded into table by table_suffix so as to set end date for pull
+        :param project: Name of project
+        :param dataset_id: Name of dataset
+        :param table_name: Name of table
+        :return last_load_date: the last table suffix of the table_name
+        '''
+
+    # TODO: Change path from local to environment variable
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
+                                                   '/AppEngine-moz-mktg-prod-001/moz-fx-data-derived-datasets-marketing-analytics.json'
+
+    # Set the query
+    client = bigquery.Client(project=project)
+    job_config = bigquery.QueryJobConfig()
+    sql = f"""
+        SELECT
+            MAX({date_field}) AS max_date
+        FROM
+            `{project}.{dataset_id}.{table_name}`
+        WHERE
+        {date_field} > DATE("{seven_days_ago}")
+        """
+    # Run the query
+    read_query = client.query(
+        sql,
+        location='US',
+        job_config=job_config)  # API request - starts the query
+    #  Assign last date to last_load_date variable
+    for row in read_query:
+        logging.info(f'{job_name}: Most recent available data in {table_name} is for {row.max_date}')
+        return row.max_date
+    return None
+
+
 def read_desktop_usage_data(read_project, next_load_date):
     '''
     Retrieves a specific dataset for loading into a permanent table in bigquery and stores in a pandas dataframe
@@ -24,11 +116,11 @@ def read_desktop_usage_data(read_project, next_load_date):
 
     # Change credentials to telemetry credentials
     # TODO: Change path from local to environment variable
-    # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-fx-data-derived-datasets-marketing-analytics.json'
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
                                                    '/AppEngine-moz-mktg-prod-001/moz-fx-data-derived-datasets-marketing-analytics.json'
 
-    #next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
+    # next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
     logging.info(f'{job_name}: Starting read for next load date: {next_load_date}')
     client = bigquery.Client(project=read_project)
     sql = f"""
@@ -121,7 +213,7 @@ def read_desktop_usage_data(read_project, next_load_date):
                   installData.installs
                 FROM
                   usageData
-                
+
                 FULL JOIN
                   installData
                 ON
@@ -133,7 +225,7 @@ def read_desktop_usage_data(read_project, next_load_date):
                   AND usageData.content = installData.content
                   AND usageData.distribution_id = installData.distribution_id
                   AND usageData.funnelOrigin = installData.funnelOrigin),
-                  
+
                 desktopKeyMetrics as (
                 SELECT
                   joinedKeyMetrics.submission,
@@ -152,9 +244,9 @@ def read_desktop_usage_data(read_project, next_load_date):
                   joinedKeyMetrics
                 WHERE
                   joinedKeyMetrics.submission IS NOT NULL
-                  
+
                 UNION ALL
-                
+
                 SELECT
                   joinedKeyMetrics.installSubmission,
                   joinedKeyMetrics.installCountry,
@@ -190,7 +282,6 @@ def clean_up_schema(data_df):
     # Change Nulls to 0 to enable schema cleanup
     data_df['installs'].fillna(0, inplace=True)
 
-
     # Convert floats to integer and clean up schema
     data_df['submission'] = data_df.submission
     data_df['country'] = data_df.country.astype(str)
@@ -218,17 +309,19 @@ def remove_url_encoding(data_df):
 
     # Remove URL Encoding from attribution fields - duplicate columns to preserve original telemetry columns
     data_df['sourceCleaned'] = list(
-        map(lambda data_df:urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')), data_df['source']))
+        map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')),
+            data_df['source']))
     data_df['mediumCleaned'] = list(
-        map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')), data_df['medium']))
+        map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')),
+            data_df['medium']))
     data_df['campaignCleaned'] = list(
         map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')),
             data_df['campaign']))
     data_df['contentCleaned'] = list(
-        map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')), data_df['content']))
+        map(lambda data_df: urllib.parse.unquote_plus(urllib.parse.unquote_plus(data_df, encoding='utf-8')),
+            data_df['content']))
     logging.info(f'{job_name}: Remove_url_encoding - URL encoding successfully completed')
     return data_df
-
 
 
 def mediumCleanup(data_df):
@@ -253,7 +346,6 @@ def mediumCleanup(data_df):
         return 'organic'
     else:
         return data_df['mediumCleaned']
-    
 
 
 def sourceCleanup(data_df):
@@ -296,51 +388,48 @@ def redefine_source_medium(data_df):
     return data_df
 
 
-
 def standardize_country_names(data_df, marketing_project):
+    '''
+    Creates new column country name with full country name to make it easier to query and analyze the data
+   :param data_df: data frame after source and medium transformations
+   :param marketing_project: Bigquery project where standardized country lookup table is saved
+   :return: 
    '''
-   :param data_df:
-   :param marketing_project:
-   :return:
-   '''
 
-
-
-   # Change credentials to telemetry credentials
-   # TODO: Change path from local to environment variable
-   # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
-   os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
+    # Change credentials to telemetry credentials
+    # TODO: Change path from local to environment variable
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
                                                    '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
 
-   # Read standardized country table and load to data frame
-   logging.info(f'{job_name}: Starting standardize_country_names country clean up')
-   client = bigquery.Client(project=marketing_project)
-   sql = f"""
+    # Read standardized country table and load to data frame
+    logging.info(f'{job_name}: Starting standardize_country_names country clean up')
+    client = bigquery.Client(project=marketing_project)
+    sql = f"""
             SELECT
             *
             FROM
             `ga-mozilla-org-prod-001.lookupTables.standardizedCountryList`
             """
-   standardized_country_list_df = client.query(sql).to_dataframe()
+    standardized_country_list_df = client.query(sql).to_dataframe()
 
+    # Change country columns to lower case to enable join
+    data_df['country'] = list(map(str.lower, data_df.country))
+    standardized_country_list_df['rawCountry'] = list(map(str.lower, standardized_country_list_df.rawCountry))
 
-   #Change country columns to lower case to enable join
-   data_df['country'] = list(map(str.lower, data_df.country))
-   standardized_country_list_df['rawCountry'] = list(map(str.lower, standardized_country_list_df.rawCountry))
+    # Join dataframes
+    data_df = pd.merge(data_df, standardized_country_list_df, left_on='country', right_on='rawCountry', how='left')
 
-   # Join dataframes
-   data_df = pd.merge(data_df, standardized_country_list_df, left_on='country', right_on='rawCountry', how='left')
+    # Drop unnecessary columns and rename new column
+    data_df = data_df.drop('rawCountry', axis=1)
+    data_df = data_df.rename(index=str, columns={'standardizedCountry': 'countryName'})
+    data_df['countryName'] = data_df.countryName.astype(str)
 
-   # Drop unnecessary columns and rename new column
-   data_df = data_df.drop('rawCountry', axis=1)
-   data_df = data_df.rename(index=str, columns={'standardizedCountry': 'countryName'})
-   data_df['countryName'] = data_df.countryName.astype(str)
+    # Return country column to upper case
+    data_df['country'] = list(map(str.upper, data_df.country))
 
-   # Return country column to upper case
-   data_df['country'] = list(map(str.upper, data_df.country))
-
-   logging.info(f'{job_name}: Standardize_country_names country cleanup completed')
-   return data_df
+    logging.info(f'{job_name}: Standardize_country_names country cleanup completed')
+    return data_df
 
 
 def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name, next_load_date):
@@ -356,7 +445,7 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
 
     # Change credentials to marketing analytics credentials
     # TODO: Change path from local to environment variable
-    # os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
                                                    '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
 
@@ -411,22 +500,44 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     return None
 
 
+def run_desktop_telemetry_retrieve():
+    # Find the last date when data was loaded into the table
+    #ToDO: remove comment blocks after testing
+    load_project = marketing_project_var
+    load_dataset_id = 'desktop'
+    load_table_name = 'desktop_corp_metrics'
+    last_load_date = calc_last_load_date(load_project,load_dataset_id, load_table_name) #remove comments before sending to app engine
 
+    # Find the most recent data that data is available
+    read_project = telemetry_project_var
+    read_dataset_id = 'telemetry'
+    read_table_name_1 = 'firefox_desktop_exact_mau28_by_dimensions_v1'
+    read_table_name_2 = 'telemetry_new_profile_parquet_v2'
+    end_load_date_1 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
+    end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_2, 'submission')
+    end_load_date = min(end_load_date_1, end_load_date_2)
+    logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
 
-next_load_date = date(2018,4,6)
-end_load_date = date(2018,4,5)
-data = read_desktop_usage_data('moz-fx-data-derived-datasets', next_load_date)
+    # Set dates required for loading new data
+    last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
+    #next_load_date = date(2018, 1, 8)
+    #end_load_date = date(2018, 5, 25)
+    # ToDO: When ready to run automatically remove manually set line above
+    next_load_date = last_load_date + timedelta(1)
+    next_load_date = datetime.date(next_load_date)
 
-load_project = "ga-mozilla-org-prod-001"
-load_dataset_id = 'desktop'
-load_table_name = 'desktop_corp_metrics'
+    while next_load_date <= end_load_date:
+        data = read_desktop_usage_data(read_project, next_load_date)
+        data = clean_up_schema(data)
+        data = remove_url_encoding(data)
+        data = redefine_source_medium(data)
+        data = standardize_country_names(data, load_project)
+        load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name, next_load_date)
+        
+        # Set next load date
+        next_load_date = next_load_date + timedelta(1)
+    return
 
-
-data = clean_up_schema(data)
-data = remove_url_encoding(data)
-data = redefine_source_medium(data)
-data = standardize_country_names(data, load_project)
-
-
-load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name, next_load_date)
+if __name__ == '__main__':
+    run_desktop_telemetry_retrieve()
 

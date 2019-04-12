@@ -116,7 +116,7 @@ WITH
     AND sourceCleaned IN ('google', 'bing')
     AND mediumCleaned IN ('cpc')
     AND (campaignCleaned LIKE 'Brand%' OR campaignCleaned LIKE 'Firefox-Brand%')
-    AND submission BETWEEN DATE(2019, 1, 1) AND DATE(2019,4,3)
+    AND submission BETWEEN DATE(2019, 1, 1) AND DATE(2019,4,11)
   GROUP BY
     installsDate,
     content),

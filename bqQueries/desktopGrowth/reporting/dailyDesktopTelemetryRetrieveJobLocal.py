@@ -9,9 +9,6 @@ import pandas as pd
 import logging
 import json
 import urllib
-import numpy
-import tempfile
-import shutil
 
 job_name = 'telemetry_desktop_usage_metrics_retrieve'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
@@ -77,7 +74,7 @@ def calc_max_data_availability(project, dataset_id, table_name, date_field):
         '''
 
     # TODO: Change path from local to environment variable
-    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-fx-data-derived-datasets-marketing-analytics.json'
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
                                                    '/AppEngine-moz-mktg-prod-001/moz-fx-data-derived-datasets-marketing-analytics.json'
 
@@ -502,11 +499,10 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
 
 def run_desktop_telemetry_retrieve():
     # Find the last date when data was loaded into the table
-    #ToDO: remove comment blocks after testing
     load_project = marketing_project_var
     load_dataset_id = 'desktop'
     load_table_name = 'desktop_corp_metrics'
-    last_load_date = calc_last_load_date(load_project,load_dataset_id, load_table_name) #remove comments before sending to app engine
+    last_load_date = calc_last_load_date(load_project,load_dataset_id, load_table_name)
 
     # Find the most recent data that data is available
     read_project = telemetry_project_var
@@ -515,7 +511,7 @@ def run_desktop_telemetry_retrieve():
     read_table_name_2 = 'telemetry_new_profile_parquet_v2'
     end_load_date_1 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
     end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_2, 'submission')
-    end_load_date = min(end_load_date_1, end_load_date_2)
+    end_load_date = min(end_load_date_1, end_load_date_2) #set end_load_date to min date between two tables to avoid partial loads
     logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
 
     # Set dates required for loading new data

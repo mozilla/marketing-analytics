@@ -9,30 +9,27 @@ import pandas as pd
 import logging
 import json
 import urllib
-import numpy
-import tempfile
-import shutil
 
 job_name = 'telemetry_desktop_usage_metrics_retrieve'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variables
-#TODO: Remove local file reference prior to pushing to app engine
+# TODO: Remove local file reference prior to pushing to app engine
 os.environ['desktop_environment_variables'] = 'desktopTelemetryEnvVariables.json'
 #os.environ['desktop_environment_variables'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics/bqQueries/' \
 #                                              'desktopGrowth/reporting/desktopTelemetryEnvVariables.json'
 
-#TODO: Change path from local to environment file
+# TODO: Change path from local to environment file
 with open('desktopTelemetryEnvVariables.json') as json_file:
     variables = json.load(json_file)
     marketing_project_var = variables['marketing_project']
     telemetry_project_var = variables['telemetry_project']
 
 current_date = date.today()
-seven_days_ago = current_date-timedelta(7)
+seven_days_ago = current_date - timedelta(7)
 
 
-def calc_last_load_date(project,dataset_id, table_name):
+def calc_last_load_date(project, dataset_id, table_name):
     '''
     Finds the last date loaded into table by table_suffix so as to set starting point for next days pull
     :param project: Name of project
@@ -41,10 +38,10 @@ def calc_last_load_date(project,dataset_id, table_name):
     :return last_load_date: the last table suffix of the table_name
     '''
 
-    #TODO: Change path from local to environment variable
+    # TODO: Change path from local to environment variable
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
     #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
-    #                                               '/App Engine - moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    #                                               '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
 
     # Set the query
     client = bigquery.Client(project=project)
@@ -67,7 +64,7 @@ def calc_last_load_date(project,dataset_id, table_name):
     return None
 
 
-def calc_max_data_availability(project, dataset_id, table_name):
+def calc_max_data_availability(project, dataset_id, table_name, date_field):
     '''
         Finds the last date loaded into table by table_suffix so as to set end date for pull
         :param project: Name of project
@@ -77,20 +74,20 @@ def calc_max_data_availability(project, dataset_id, table_name):
         '''
 
     # TODO: Change path from local to environment variable
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-fx-data-derived-datasets-marketing-analytics.json'
     #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
-    #                                               '/App Engine - moz-mktg-prod-001/moz-fx-data-derived-datasets-marketing-analytics.json'
+    #                                               '/AppEngine-moz-mktg-prod-001/moz-fx-data-derived-datasets-marketing-analytics.json'
 
     # Set the query
     client = bigquery.Client(project=project)
     job_config = bigquery.QueryJobConfig()
     sql = f"""
         SELECT
-            MAX(submission_date) AS max_date
+            MAX({date_field}) AS max_date
         FROM
             `{project}.{dataset_id}.{table_name}`
         WHERE
-        submission_date > DATE("{seven_days_ago}")
+        {date_field} > DATE("{seven_days_ago}")
         """
     # Run the query
     read_query = client.query(
@@ -393,7 +390,7 @@ def standardize_country_names(data_df, marketing_project):
     Creates new column country name with full country name to make it easier to query and analyze the data
    :param data_df: data frame after source and medium transformations
    :param marketing_project: Bigquery project where standardized country lookup table is saved
-   :return: 
+   :return:
    '''
 
     # Change credentials to telemetry credentials
@@ -449,7 +446,6 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     #os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = '/Users/gkaberere/Google Drive/Github/marketing-analytics' \
     #                                               '/AppEngine-moz-mktg-prod-001/moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
 
-
     # Set dates required for loading new data
     next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
     logging.info(f'{job_name}: load_desktop_usage_data - Starting load for next load date: {next_load_date}')
@@ -487,7 +483,6 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     job_config.source_format = bigquery.SourceFormat.CSV
     job_config.max_bad_records = 10  # number of bad records allowed before job fails
 
-
     # Run Load Job
     job = client.load_table_from_dataframe(
         data,
@@ -502,27 +497,29 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
 
 def run_desktop_telemetry_retrieve():
     # Find the last date when data was loaded into the table
-    #ToDO: remove comment blocks after testing
     load_project = marketing_project_var
     load_dataset_id = 'desktop'
     load_table_name = 'desktop_corp_metrics'
-    #last_load_date = calc_last_load_date(load_project,load_dataset_id, load_table_name) #remove comments before sending to app engine
+    last_load_date = calc_last_load_date(load_project, load_dataset_id, load_table_name)
 
     # Find the most recent data that data is available
     read_project = telemetry_project_var
     read_dataset_id = 'telemetry'
     read_table_name_1 = 'firefox_desktop_exact_mau28_by_dimensions_v1'
     read_table_name_2 = 'telemetry_new_profile_parquet_v2'
-    #end_load_date_1 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1)
-    #end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_2)
-    #end_load_date = min(end_load_date_1, end_load_date_2)
+    end_load_date_1 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
+    end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_2, 'submission')
+    end_load_date = min(end_load_date_1,
+                        end_load_date_2)  # set end_load_date to min date between two tables to avoid partial loads
+    logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
 
     # Set dates required for loading new data
-    #last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
-    next_load_date = date(2018, 1, 1)
-    end_load_date = date(2019, 3, 25)
-    # ToDO: When ready to run automatically remove manually set line above
-    #next_load_date = last_load_date + timedelta(1)
+    last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
+    # next_load_date = date(2018, 1, 8)
+    # end_load_date = date(2018, 5, 25)
+    # ToDO: When ready to run automatically remove manually set lines above
+    next_load_date = last_load_date + timedelta(1)
+    next_load_date = datetime.date(next_load_date)
 
     while next_load_date <= end_load_date:
         data = read_desktop_usage_data(read_project, next_load_date)
@@ -531,10 +528,11 @@ def run_desktop_telemetry_retrieve():
         data = redefine_source_medium(data)
         data = standardize_country_names(data, load_project)
         load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name, next_load_date)
-        
+
         # Set next load date
         next_load_date = next_load_date + timedelta(1)
     return
+
 
 if __name__ == '__main__':
     run_desktop_telemetry_retrieve()

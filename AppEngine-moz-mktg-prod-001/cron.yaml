@@ -17,7 +17,7 @@ cron:
   timezone: US/Eastern
   target: production
 
-- description : Retrieve desktop usage data
+- description : Retrieve desktop telemetry usage data
   url : /desktopCorporateMetrics
   schedule: every day 9:00
   timezone: US/Eastern

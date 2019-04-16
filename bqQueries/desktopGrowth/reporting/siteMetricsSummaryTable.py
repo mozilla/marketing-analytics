@@ -25,7 +25,7 @@ def calc_last_load_date(dataset_id, table_name):
     job_config = bigquery.QueryJobConfig()
     sql = f"""
     SELECT
-    max(_table_suffix) AS last_load_date
+    FORMAT_DATE('%Y%m%d', max(date)) AS last_load_date
     FROM
     `ga-mozilla-org-prod-001.{dataset_id}.{table_name}_*`
     """

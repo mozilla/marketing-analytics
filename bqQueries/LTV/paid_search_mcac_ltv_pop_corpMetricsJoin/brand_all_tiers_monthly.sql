@@ -19,7 +19,7 @@ WITH
       'Bing')
     -- TODO: Need to check if this excludes any campaigns with no spend but downloads
     AND date BETWEEN DATE(2019,1,1)
-    AND DATE(2019,5,16)
+    AND DATE(2019,5,22)
   GROUP BY
     date,
     adname,
@@ -73,7 +73,7 @@ WITH
   WHERE
     _TABLE_SUFFIX NOT IN ('','dev')
     AND _TABLE_SUFFIX NOT LIKE 'intraday%'
-    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019,5,16)
+    AND PARSE_DATE('%Y%m%d', _TABLE_SUFFIX) BETWEEN DATE(2019, 1, 1) AND DATE(2019,5,22)
     AND hits.type = 'EVENT'
     AND hits.eventInfo.eventCategory IS NOT NULL
     AND trafficSource.source IN ('google','bing')
@@ -116,7 +116,7 @@ WITH
     AND sourceCleaned IN ('google', 'bing')
     AND mediumCleaned IN ('cpc')
     AND (campaignCleaned LIKE 'Brand%' OR campaignCleaned LIKE 'Firefox-Brand%')
-    AND submission BETWEEN DATE(2019, 1, 1) AND DATE(2019,5,16)
+    AND submission BETWEEN DATE(2019, 1, 1) AND DATE(2019,5,22)
   GROUP BY
     installsDate,
     content),

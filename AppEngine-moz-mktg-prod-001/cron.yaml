@@ -22,3 +22,33 @@ cron:
   schedule: every day 9:00
   timezone: US/Eastern
   target: production
+
+- description : Summarize website metrics
+  url : /siteMetricsSummaryTable
+  schedule: every day 8:00
+  timezone: US/Eastern
+  target: production
+
+- description : Summarize website metrics
+  url : /siteMetricsSummaryTable
+  schedule: every day 15:00
+  timezone: US/Eastern
+  target: production
+
+- description : Retrieve website metrics by landing page
+  url : /siteMetricsByLandingPageSummaryTable
+  schedule: every day 8:00
+  timezone: US/Eastern
+  target: production
+
+- description : Retrieve website metrics by landing page
+  url : /siteMetricsByLandingPageSummaryTable
+  schedule: every day 15:00
+  timezone: US/Eastern
+  target: production
+
+- description : Retrieve website metrics by experiments
+  url : /siteMetricsByExperiment
+  schedule: every day 15:00
+  timezone: US/Eastern
+  target: production

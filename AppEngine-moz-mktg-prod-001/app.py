@@ -5,6 +5,9 @@ import snippetsMetaDataLoadJob
 import snippetsTelemetryDataLoadJob
 import flask
 import dailyDesktopTelemetryRetrieveJob
+import siteMetricsSummaryTable
+import siteMetricsByLandingPageSummaryTable
+import siteMetricsByExperiment
 
 # [START Config]
 app = flask.Flask(__name__)
@@ -30,6 +33,18 @@ def snippet_telemetry_load():
 @app.route('/desktopCorporateMetrics')
 def daily_desktop_corp_metrics_load():
     return dailyDesktopTelemetryRetrieveJob.run_desktop_telemetry_retrieve()
+
+@app.route('/siteMetricsSummaryTable')
+def site_metrics_summary_table():
+    return siteMetricsSummaryTable.run_site_metrics_update()
+
+@app.route('/siteMetricsByLandingPageSummaryTable')
+def site_metrics_by_landing_page_summary_table():
+    return siteMetricsByLandingPageSummaryTable.run_site_metrics_landing_page_update()
+
+@app.route('/siteMetricsByExperiment')
+def site_metrics_by_experiment():
+    return siteMetricsByExperiment.run_site_metrics_by_experiment_update()
 
 if __name__ == '__main__':
     # This is used when running locally. Gunicorn is used to run the

@@ -27,6 +27,15 @@ handlers:
 - url: /desktopCorporateMetrics
   script: app.app
 
+- url: /siteMetricsSummaryTable
+  script: app.app
+
+- url: /siteMetricsByLandingPageSummaryTable
+  script: app.app
+
+- url: /siteMetricsByExperiment
+  script: app.app
+
 - url: /.*
   script: app.app
 

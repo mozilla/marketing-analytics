@@ -1,29 +1,19 @@
+WITH corpMetrics as(
 SELECT
-  month,
-  CASE
-    WHEN country = 'ca' THEN 'Canada'
-    ELSE CASE
-    WHEN country = 'fr' THEN 'France'
-    ELSE CASE
-    WHEN country = 'de' THEN 'Germany'
-    ELSE CASE
-    WHEN country = 'gb' THEN 'United Kingdom'
-    ELSE CASE
-    WHEN country = 'us' THEN 'United States'
-    ELSE country
-  END END
-  END END
-  END AS country,
-  channels,
-  SUM(totalInstalls) AS totalInstalls,
-  SUM(mktgAttrInstalls) AS mktgAttrInstalls
-FROM (
-  SELECT
-    FORMAT_DATE("%Y%m", PARSE_DATE("%Y%m%d",
-        submission_date_s3)) AS month,
+    FORMAT_DATE("%Y%m", submission) AS month,
     CASE
-      WHEN country IN ('ca',  'fr',  'de',  'gb',  'us') THEN country
-      ELSE 'non-tier1'
+      WHEN country = 'CA' THEN 'Canada'
+    ELSE CASE
+      WHEN country = 'FR' THEN 'France'
+    ELSE CASE
+      WHEN country = 'DE' THEN 'Germany'
+    ELSE CASE
+      WHEN country = 'GB' THEN 'United Kingdom'
+    ELSE CASE
+      WHEN country = 'US' THEN 'United States'
+    ELSE 'rest of world'
+    END END
+    END END
     END AS country,
     CASE
       WHEN LOWER(mediumCleaned) = 'organic' THEN 'organic'
@@ -40,23 +30,36 @@ FROM (
     END END
     END AS channels,
     SUM(installs) AS totalInstalls,
+    SUM(CASE WHEN funnelOrigin = 'darkFunnel' THEN installs ELSE 0 END) as darkFunnelInstalls,
+    SUM(CASE WHEN funnelOrigin = 'partnerships' THEN installs ELSE 0 END) as partnershipInstalls,
     SUM(CASE
         WHEN funnelOrigin = 'mozFunnel' THEN installs
         ELSE 0 END) AS mktgAttrInstalls
   FROM
-    `ga-mozilla-org-prod-001.telemetry.corpMetrics`
+    `ga-mozilla-org-prod-001.desktop.desktop_corp_metrics_*`
   WHERE
-    submission_date_s3 >= '20190101'
-    AND submission_date_s3 <= '20191231'
+    submission >= "2018-01-01" 
+    AND submission <= "2019-05-18"
   GROUP BY 1,2,3
-  ORDER BY 1,2,5 DESC)
-GROUP BY 1,2,3
-
-UNION ALL
-  (  SELECT
-    FORMAT_DATE("%Y%m", PARSE_DATE("%Y%m%d",
-        submission_date_s3)) AS month,
-    'total' AS country,
+  ORDER BY 1,2,5 DESC),
+  
+adjustedCorpMetrics as (
+SELECT
+    FORMAT_DATE("%Y%m", submission) AS month,
+    CASE
+      WHEN country = 'CA' THEN 'Canada'
+    ELSE CASE
+      WHEN country = 'FR' THEN 'France'
+    ELSE CASE
+      WHEN country = 'DE' THEN 'Germany'
+    ELSE CASE
+      WHEN country = 'GB' THEN 'United Kingdom'
+    ELSE CASE
+      WHEN country = 'US' THEN 'United States'
+    ELSE 'rest of world'
+    END END
+    END END
+    END AS country,
     CASE
       WHEN LOWER(mediumCleaned) = 'organic' THEN 'organic'
       ELSE CASE
@@ -72,13 +75,201 @@ UNION ALL
     END END
     END AS channels,
     SUM(installs) AS totalInstalls,
+    SUM(CASE WHEN funnelOrigin = 'darkFunnel' THEN installs ELSE 0 END) as darkFunnelInstalls,
+    SUM(CASE WHEN funnelOrigin = 'partnerships' THEN installs ELSE 0 END) as partnershipInstalls,
     SUM(CASE
         WHEN funnelOrigin = 'mozFunnel' THEN installs
         ELSE 0 END) AS mktgAttrInstalls
   FROM
-    `ga-mozilla-org-prod-001.telemetry.corpMetrics`
+    `ga-mozilla-org-prod-001.desktop.desktop_corpMetrics_post_profilePerInstallAdj_*`
   WHERE
-    submission_date_s3 >= '20190101'
-    AND submission_date_s3 <= '20191231'
+    submission >= "2019-05-19" 
+    AND submission <= "2019-06-30"
   GROUP BY 1,2,3
-  ORDER BY 1,2,5 DESC)
+  ORDER BY 1,2,5 DESC),
+  
+aggregated as (
+  
+-- Select installs by country
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  corpMetrics
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  adjustedCorpMetrics
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+
+-- SELECT installs total
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'total' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  corpMetrics
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'total' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  adjustedCorpMetrics
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+
+-- Select installs for tier 1 aggregated
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  corpMetrics
+WHERE
+  country IN ('Canada',  'France',  'Germany',  'United Kingdom',  'United States')
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  adjustedCorpMetrics
+WHERE
+  country IN ('Canada',  'France',  'Germany',  'United Kingdom',  'United States')
+GROUP BY
+  period, month, country, channels
+
+UNION ALL
+
+-- SELECT Tier 1 NA aggregate
+
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1-NA' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  corpMetrics
+WHERE
+  country IN ('Canada', 'United States')
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1-NA' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  adjustedCorpMetrics
+WHERE
+  country IN ('Canada', 'United States')
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+
+-- Select Tier 1 EU aggregate
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1-EU' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  corpMetrics
+WHERE
+  country IN ('France',  'Germany',  'United Kingdom')
+GROUP BY
+  period, month, country, channels
+  
+UNION ALL
+SELECT
+  PARSE_DATE('%Y%m%d', CONCAT(month,'01')) as period,
+  month,
+  'tier 1-EU' as country,
+  channels,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls,
+  SUM(totalInstalls) as totalInstalls
+FROM
+  adjustedCorpMetrics
+WHERE
+  country IN ('France',  'Germany',  'United Kingdom')
+GROUP BY
+  period, month, country, channels)
+  
+SELECT 
+  period,
+  month,
+  country,
+  channels,
+  SUM(totalInstalls) as totalInstalls,
+  SUM(mktgAttrInstalls) as mktgAttrInstalls,
+  SUM(darkFunnelInstalls) as darkFunnelInstalls,
+  SUM(partnershipInstalls) as partnershipInstalls
+FROM aggregated
+  GROUP BY period, month, country, channels
+  ORDER BY period, month, country, mktgAttrInstalls DESC

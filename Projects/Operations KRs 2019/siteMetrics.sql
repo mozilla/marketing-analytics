@@ -21,7 +21,7 @@ FROM
   FORMAT_DATE("%Y%m", PARSE_DATE("%Y%m%d",date)) AS month,
   CASE
     WHEN geoNetwork.country IN ('Canada',  'France',  'Germany',  'United Kingdom',  'United States') THEN geoNetwork.country
-    ELSE 'non-tier1'
+    ELSE 'rest of world'
   END AS country,
   CASE
     WHEN trafficSource.medium = 'organic' THEN 'organic'
@@ -42,8 +42,8 @@ FROM
 FROM
   `ga-mozilla-org-prod-001.65789850.ga_sessions_*`
 WHERE
-  _TABLE_SUFFIX >= '20190101'
-  AND _TABLE_SUFFIX <= '20191231'
+  _TABLE_SUFFIX >= '20190501'
+  AND _TABLE_SUFFIX <= '20190531'
 GROUP BY 1,2,3,4)
 GROUP BY 1,2,3
 ) AS sessionsTable
@@ -64,7 +64,7 @@ FROM
   visitNumber as visitNumber,
   CASE
     WHEN geoNetwork.country IN ('Canada',  'France',  'Germany',  'United Kingdom',  'United States') THEN geoNetwork.country
-    ELSE 'non-tier1'
+    ELSE 'rest of world'
   END AS country,
   CASE
     WHEN trafficSource.medium = 'organic' THEN 'organic'
@@ -86,8 +86,8 @@ FROM
   `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
   UNNEST (hits) AS hits
 WHERE
-  _TABLE_SUFFIX >= '20190101'
-  AND _TABLE_SUFFIX <= '20191231'
+  _TABLE_SUFFIX >= '20190501'
+  AND _TABLE_SUFFIX <= '20190531'
   AND hits.type = 'EVENT'
   AND hits.eventInfo.eventCategory IS NOT NULL
   AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"
@@ -103,6 +103,7 @@ ORDER BY 1,2,4 DESC)
 --- Pull from all data table
 
 SELECT * FROM alldata
+
 UNION ALL
 
 (SELECT
@@ -117,3 +118,49 @@ FROM alldata
 GROUP BY 1,2,3
 ORDER BY 1,4 DESC)
 
+UNION ALL
+
+(SELECT
+month,
+'tier 1' as country,
+channels,
+SUM(totalSessions) as totalSessions,
+SUM(nonFxSessions) as nonFxSessions,
+SUM(downloads) as downloads,
+SUM(nonFXDownloads) as nonFXDownloads
+FROM alldata
+WHERE country IN ('Canada',  'France',  'Germany',  'United Kingdom',  'United States')
+GROUP BY 1,2,3
+ORDER BY 1,4 DESC)
+
+UNION ALL
+
+(SELECT
+month,
+'tier 1-NA' as country,
+channels,
+SUM(totalSessions) as totalSessions,
+SUM(nonFxSessions) as nonFxSessions,
+SUM(downloads) as downloads,
+SUM(nonFXDownloads) as nonFXDownloads
+FROM alldata
+WHERE country IN ('Canada',  'United States')
+GROUP BY 1,2,3
+ORDER BY 1,4 DESC)
+
+UNION ALL
+
+(SELECT
+month,
+'tier 1-EU' as country,
+channels,
+SUM(totalSessions) as totalSessions,
+SUM(nonFxSessions) as nonFxSessions,
+SUM(downloads) as downloads,
+SUM(nonFXDownloads) as nonFXDownloads
+FROM alldata
+WHERE country IN ('France',  'Germany',  'United Kingdom')
+GROUP BY 1,2,3
+ORDER BY 1,4 DESC)
+
+ORDER BY 1,2,4 DESC

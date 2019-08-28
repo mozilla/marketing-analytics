@@ -20,4 +20,11 @@ SAFE_DIVIDE(currentYear.aDAUMetric, priorYear.aDAUMetric) -- avoids division by 
     ROUND(AVG(aDAU) OVER (ORDER BY submissionDate ROWS BETWEEN 27 PRECEDING AND CURRENT ROW)) AS DAU28Day,
 
 
--- Legacy SQL
+-- Regex for specific landing pages
+REGEXP_CONTAINS(hits.page.pagePath, "^/([a-z]*|[a-z]*-[A-Z]*)/firefox/new/")
+
+-- Split text fields
+SPLIT(environment.build.version, '.')[offset (0)] as build,
+
+-- Subtract dates
+submission >= DATE_SUB(CURRENT_DATE, INTERVAL 29 DAY)

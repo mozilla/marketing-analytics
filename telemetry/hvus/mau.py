@@ -15,7 +15,7 @@ main_summary_oct = main_summary\
     .agg(sum(col('scalar_parent_browser_engagement_total_uri_count')).alias('sum_uri_count'))\
     .withColumn('is_adau', when(col('sum_uri_count') >= 5, 1).otherwise(0))
 
-## MAU as of 10/31 segmented into US, CA, DE
+## 2019DesktopKpis as of 10/31 segmented into US, CA, DE
 mau_clients = main_summary_oct\
     .groupBy('submission_date_s3', 'client_id')\
     .agg(count(col('submission_date_s3')).alias('dau'))\

@@ -8,7 +8,7 @@ FROM
   `ltv.ltv_v1c`
 WHERE
   historical_searches < (
-  SELECT
+   SELECT
     STDDEV(historical_searches)
   FROM
     `ltv.ltv_v1c`) *2.5 + (

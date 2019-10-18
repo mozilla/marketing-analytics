@@ -57,8 +57,9 @@ def upload_to_gcs(csvfile, bucket, blobname):
     logging.info(f'{job_name}: file successfully uploaded {gcslocation} ...')
     return gcslocation
 
+
 #TODO: SPLIT THIS INTO TWO SO THAT S3 DOWNLOAD AND GC UPLOAD CAN BE SEPARATED AS DIFFERENT TASKS IN AIRFLOW
-def ingest(url, bucket, blobname):
+def ingest():
     try:
         temp_dir = tempfile.mkdtemp(prefix='snippet_metadata')
         file_csv = download_metadata_file(url, temp_dir)
@@ -68,7 +69,7 @@ def ingest(url, bucket, blobname):
         shutil.rmtree(temp_dir)
 
 
-def bq_metadata_upload(gcs_file_name, dataset_id, table_name):
+def bq_metadata_upload():
     logging.info(f'{job_name}: Starting load of {file_date} to bigquery')
 
     #Configure load job
@@ -103,26 +104,11 @@ def bq_metadata_upload(gcs_file_name, dataset_id, table_name):
     return
 
 
-def air_flow_ingest_s3_file():
-    ingest(url, bucket, blobname)
-    return
-
-
-def air_flow_upload_to_bq():
-    bq_metadata_upload(gcs_file_name, dataset_id, table_name)
-    return
-
-
 def run_snippets_metadata_load_job():
-    ingest(url, bucket, blobname)
-    bq_metadata_upload(gcs_file_name, dataset_id, table_name)
+    ingest()
+    bq_metadata_upload()
     return
 
 
 if __name__ == '__main__':
     run_snippets_metadata_load_job()
-
-
-# Things to reverse to get it to run
-# 1 removed variable reference
-# 2 in app.py instead of calling it from main made it call like snippet performance - also moved variables up to variables section

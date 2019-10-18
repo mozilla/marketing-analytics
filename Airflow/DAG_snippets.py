@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(m
 #2. Set Default Arguments
 default_args = {
     'owner': 'George Kaberere',
-    'start_date': datetime(2019,7,26),
+    'start_date': datetime(2019,8,1),
     #'end_date': datetime(2020,1,1),
     'depends_on_past': False,
     'email': ['gkaberere@mozilla.com'],
@@ -29,18 +29,20 @@ dag = DAG(
     'Snippets_Data_Transfer',
     default_args=default_args,
     description='Pulls metadata from S3, Telemetry from redash, loads into BQ and creates summary table for dashboard',
-    schedule_interval=None
+    schedule_interval='0 10 * * *'
 )
 
 
 #4. Tasks
 retrieve_s3_file = PythonOperator(task_id='Retrieve_S3_file_load_GCS',
-                                  python_callable=snippetsMetaDataLoadJob.air_flow_ingest_s3_file,
+                                  python_callable=snippetsMetaDataLoadJob.ingest,
                                   dag=dag)
 
 upload_to_BQ_table = PythonOperator(task_id='Ingest_data_into_BQ',
-                                    python_callable=snippetsMetaDataLoadJob.airflow_upload_to_bq,
+                                    python_callable=snippetsMetaDataLoadJob.bq_metadata_upload,
                                     dag=dag)
+
+download_telemetry_
 
 #5. Set up Dependencies
 retrieve_s3_file >> upload_to_BQ_table

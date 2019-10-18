@@ -1,7 +1,7 @@
 runtime: python
 env: flex
 entrypoint: gunicorn -b :$PORT app:app --timeout 3600
-service: production
+service: productionv2
 runtime_config:
   python_version: 3
 

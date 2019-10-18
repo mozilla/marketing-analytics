@@ -6,14 +6,15 @@ import shutil
 import json
 from google.cloud import storage, bigquery
 from datetime import datetime
+import certifi
 
 # Start Logging
 job_name = 'snippets_metadata_load_job'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variable for authentication and data retrieve
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
-os.environ['snippets_environment_variables'] = 'snippetsEnvVariables.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
+os.environ['snippets_environment_variables'] = f"""{os.environ['variables_path']}snippetsEnvVariables.json"""
 
 with open('snippetsEnvVariables.json') as json_file:
     variables = json.load(json_file)
@@ -39,7 +40,10 @@ def download_metadata_file(url, temp_dir):
     logging.info(f'{job_name}: Starting file request from S3 for {file_date}')
     csvfile = os.path.join(temp_dir, f'snippets_metadata_{file_date}.csv')
     with open(csvfile, 'wb') as file:
-        http = urllib3.PoolManager()
+        http = urllib3.PoolManager(
+            cert_reqs='CERT_REQUIRED',
+            ca_certs=certifi.where()
+        )
         response = http.request('GET', url)
         response.status # use for logging
         file.write(response.data)
@@ -51,6 +55,7 @@ def upload_to_gcs(csvfile, bucket, blobname):
     logging.info(f'{job_name}: Starting load for {file_date} to google cloud storage')
     client = storage.Client()
     bucket = client.get_bucket(bucket)
+    #bucket = bucket
     blob = bucket.blob(blobname)
     blob.upload_from_filename(filename=csvfile)
     gcslocation = f'gs://{bucket}/{blobname}'
@@ -83,7 +88,8 @@ def bq_metadata_upload(gcs_file_name, dataset_id, table_name):
         bigquery.SchemaField('campaign', 'STRING'),
         bigquery.SchemaField('category', 'STRING'),
         bigquery.SchemaField('url', 'STRING'),
-        bigquery.SchemaField('body', 'STRING')
+        bigquery.SchemaField('body', 'STRING'),
+        bigquery.SchemaField('tags', 'STRING')
     ]
     load_job_config.quote_character = '"'
     load_job_config.allow_quoted_newlines = True

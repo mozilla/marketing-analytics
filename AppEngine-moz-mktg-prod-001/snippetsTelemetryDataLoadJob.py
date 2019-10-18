@@ -13,9 +13,8 @@ job_name = 'snippets_telemetryData_load_job'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variable for authentication and data retrieve
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
-os.environ['snippets_environment_variables'] = 'snippetsEnvVariables.json'
-
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
+os.environ['snippets_environment_variables'] = f"""{os.environ['variables_path']}snippetsEnvVariables.json"""
 
 # Set constants required for job
 with open('snippetsEnvVariables.json') as json_file:
@@ -155,7 +154,7 @@ def load_new_telemetry_snippet_data(dataset_id, table_name, next_load_date, end_
 
 def run_snippets_telemetry_update():
     #Retrieve file from redash and store in GCP
-    ingest(url, bucket, blobname)
+    #ingest(url, bucket, blobname) - #TODO: Remove comment / change back once we have a more reliable telemetry download
 
     # Find the last date when data was loaded into the table
     read_dataset_id = 'snippets'

@@ -3,7 +3,7 @@ cron:
   url : /snippetPerformance
   schedule: every day 12:00
   timezone: US/Eastern
-  target: production
+  target: productionv2
 
 - description : Retrieve snippets metadata from S3 and load into bigquery metadata table
   url : /snippetsMetaData

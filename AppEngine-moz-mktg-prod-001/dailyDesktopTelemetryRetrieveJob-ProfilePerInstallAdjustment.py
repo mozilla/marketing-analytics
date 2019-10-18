@@ -17,7 +17,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(m
 os.environ['config'] = f"""{os.environ['desktop_telem_variables_json']}desktop_telemetry_env_variables.json"""
 
 config = os.environ['config']
-# TODO: Change path from local to environment file
+
+# TODO: How do you do it in a way that it runs if being pulled from Github or if you are running it locally.
 with open(config, 'r') as json_file:
     variables = json.load(json_file)
     marketing_project_var = variables['marketing_project']
@@ -36,7 +37,7 @@ def calc_last_load_date(project, dataset_id, table_name):
     :return last_load_date: the last table suffix of the table_name
     '''
 
-    # TODO: Change path from local to environment variable
+    # TODO: Set it up to first check if google_application_credentials for the user are set, if not, then use the service account
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
 
     # Set the query
@@ -147,25 +148,16 @@ def read_desktop_usage_data(read_project, next_load_date):
                 installData as (
                 SELECT
                   submission,
-                  CASE WHEN metadata.geo_country IS NULL THEN '' ELSE metadata.geo_country END as country,
-                  CASE WHEN environment.settings.attribution.source IS NULL THEN 'unknown' ELSE environment.settings.attribution.source END as source,
-                  CASE WHEN environment.settings.attribution.medium IS NULL THEN 'unknown' ELSE environment.settings.attribution.medium END as medium,
-                  CASE WHEN environment.settings.attribution.campaign IS NULL THEN 'unknown' ELSE environment.settings.attribution.campaign END as campaign,
-                  CASE WHEN environment.settings.attribution.content IS NULL THEN 'unknown' ELSE environment.settings.attribution.content END as content,
-                  CASE WHEN environment.partner.distribution_id IS NULL THEN '' ELSE environment.partner.distribution_id END as distribution_id,
-                  CASE
-                    WHEN environment.settings.attribution.source IS NULL AND environment.settings.attribution.medium IS NULL 
-                        AND environment.settings.attribution.campaign IS NULL AND environment.settings.attribution.content IS NULL 
-                        AND environment.partner.distribution_id IS NULL THEN 'darkFunnel'
-                    ELSE CASE
-                    WHEN environment.settings.attribution.source IS NULL AND environment.settings.attribution.medium IS NULL 
-                        AND environment.settings.attribution.campaign IS NULL AND environment.settings.attribution.content IS NULL 
-                        AND environment.partner.distribution_id IS NOT NULL THEN 'partnerships'
-                    ELSE 'mozFunnel'
-                  END END AS funnelOrigin,
+                  CASE WHEN country IS NULL THEN '' ELSE country END as country,
+                  CASE WHEN source IS NULL THEN 'unknown' ELSE source END as source,
+                  CASE WHEN medium IS NULL THEN 'unknown' ELSE medium END as medium,
+                  CASE WHEN campaign IS NULL THEN 'unknown' ELSE campaign END as campaign,
+                  CASE WHEN content IS NULL THEN 'unknown' ELSE content END as content,
+                  CASE WHEN distribution_id IS NULL THEN '' ELSE distribution_id END as distribution_id,
+                  funnelOrigin,
                   COUNT(DISTINCT client_id) as installs
                 FROM
-                  `{read_project}.telemetry.telemetry_new_profile_parquet_v2`
+                  `{read_project}.analysis.gkabbz_newProfileCountModifications_*`
                 WHERE
                   submission = DATE("{next_load_date}")
                 GROUP BY
@@ -437,7 +429,7 @@ def load_desktop_usage_data(data, load_project, load_dataset_id, load_table_name
     # Set dates required for loading new data
     next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
     logging.info(f'{job_name}: load_desktop_usage_data - Starting load for next load date: {next_load_date}')
-    load_table_name = f'{load_table_name.lower()}_{next_load_date}'
+    load_table_name = f'{load_table_name}_{next_load_date}'
 
     client = bigquery.Client(project=load_project)
 
@@ -493,19 +485,20 @@ def run_desktop_telemetry_retrieve():
     # Find the most recent data that data is available
     read_project = telemetry_project_var
     read_dataset_id = 'telemetry'
+    read_dataset_id_2 = 'analysis'
     read_table_name_1 = 'firefox_desktop_exact_mau28_by_dimensions_v1'
-    read_table_name_2 = 'telemetry_new_profile_parquet_v2'
+    read_table_name_2 = 'gkabbz_newProfileCountModifications_*'
     end_load_date_1 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
-    end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id, read_table_name_2, 'submission')
+    end_load_date_2 = calc_max_data_availability(read_project, read_dataset_id_2, read_table_name_2, 'submission')
     end_load_date = min(end_load_date_1,
                         end_load_date_2)  # set end_load_date to min date between two tables to avoid partial loads
     logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
 
     # Set dates required for loading new data
     last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
-    # next_load_date = date(2018, 1, 8)
-    # end_load_date = date(2018, 5, 25)
-    # ToDO: When ready to run automatically remove manually set lines above
+    #next_load_date = date(2019, 10, 1)
+    #end_load_date = date(2019, 10, 8)
+    # TODO: When ready to run automatically remove manually set lines above
     next_load_date = last_load_date + timedelta(1)
     next_load_date = datetime.date(next_load_date)
 

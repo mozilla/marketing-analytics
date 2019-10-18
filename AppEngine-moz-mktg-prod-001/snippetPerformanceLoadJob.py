@@ -12,8 +12,7 @@ job_name = 'snippet_performance_load_job'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variable to authenticate using service account
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json'
-
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
 
 def calc_last_load_date(dataset_id, table_name):
     '''
@@ -102,7 +101,7 @@ def load_new_snippet_data(dataset_id, table_name, next_load_date, end_load_date)
         load_job_config.write_disposition = 'WRITE_TRUNCATE'  # Options are WRITE_TRUNCATE, WRITE_APPEND, WRITE_EMPTY
         load_job_config.destination = table_ref
         sql = f"""
-                WITH impressionData AS(
+            WITH impressionData AS(
             SELECT
                 visitData.date,
                 visitData.snippetID,

@@ -5,9 +5,86 @@ from google.cloud import bigquery
 from datetime import datetime, timedelta, date
 import os
 import logging
+import json
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 job_name = 'adjusting_new_profiles'
+
+# TODO: Set it up to first check if google_application_credentials for the user are set, if not, then use the service account
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-fx-data-derived-datasets-marketing-analytics.json"""
+os.environ['config'] = f"""{os.environ['variables_path']}desktop_telemetry_env_variables.json"""
+
+config = os.environ['config']
+
+with open(config, 'r') as json_file:
+    variables = json.load(json_file)
+    marketing_project_var = variables['marketing_project']
+    telemetry_project_var = variables['telemetry_project']
+
+current_date = date.today()
+seven_days_ago = current_date - timedelta(7)
+
+
+def calc_last_load_date(project, dataset_id, table_name):
+    '''
+    Finds the last date loaded into table by table_suffix so as to set starting point for next days pull
+    :param project: Name of project
+    :param dataset_id: Name of dataset
+    :param table_name: Name of table
+    :return last_load_date: the last table suffix of the table_name
+    '''
+
+    # Set the query
+    client = bigquery.Client(project=project)
+    job_config = bigquery.QueryJobConfig()
+    sql = f"""
+    SELECT
+    max(_table_suffix) AS last_load_date
+    FROM
+    `{project}.{dataset_id}.{table_name}_*`
+    """
+    # Run the query
+    read_query = client.query(
+        sql,
+        location='US',
+        job_config=job_config)  # API request - starts the query
+    #  Assign last date to last_load_date variable
+    for row in read_query:
+        logging.info(f'{job_name}: Last load into {table_name} was for {row.last_load_date}')
+        return row.last_load_date
+    return None
+
+
+def calc_max_data_availability(project, dataset_id, table_name, date_field):
+    '''
+        Finds the last date loaded into table by table_suffix so as to set end date for pull
+        :param project: Name of project
+        :param dataset_id: Name of dataset
+        :param table_name: Name of table
+        :return last_load_date: the last table suffix of the table_name
+        '''
+
+    # Set the query
+    client = bigquery.Client(project=project)
+    job_config = bigquery.QueryJobConfig()
+    sql = f"""
+        SELECT
+            MAX({date_field}) AS max_date
+        FROM
+            `{project}.{dataset_id}.{table_name}`
+        WHERE
+        {date_field} > DATE("{seven_days_ago}")
+        """
+    # Run the query
+    read_query = client.query(
+        sql,
+        location='US',
+        job_config=job_config)  # API request - starts the query
+    #  Assign last date to last_load_date variable
+    for row in read_query:
+        logging.info(f'{job_name}: Most recent available data in {table_name} is for {row.max_date}')
+        return row.max_date
+    return None
 
 
 def load_adjusted_new_profiles(next_load_date, max_date_pull):
@@ -166,9 +243,27 @@ def load_adjusted_new_profiles(next_load_date, max_date_pull):
     return None
 
 def run_adjusted_new_profiles():
+    # Find the last date when data was loaded into the table
+    load_project = telemetry_project_var
+    load_dataset_id = 'analysis'
+    load_table_name = 'gkabbz_newProfileCountModifications'
+    last_load_date = calc_last_load_date(load_project, load_dataset_id, load_table_name)
+
+    # Find the most recent data that data is available
+    read_project = telemetry_project_var
+    read_dataset_id = 'telemetry'
+    read_table_name_1 = 'telemetry_new_profile_parquet_v2'
+    end_load_date = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
+
+    logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
+
     # Set Dates
-    next_load_date = date(2019, 10, 17)
-    end_load_date = date(2019, 10, 17)
+    last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
+    next_load_date = last_load_date + timedelta(1)
+    next_load_date = datetime.date(next_load_date)
+
+    #next_load_date = date(2019, 10, 24)
+    #end_load_date = date(2019, 10, 24)
 
     while next_load_date <= end_load_date:
         max_date_pull = next_load_date + timedelta(1)

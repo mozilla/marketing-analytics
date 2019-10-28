@@ -16,7 +16,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(m
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
 os.environ['snippets_environment_variables'] = f"""{os.environ['variables_path']}snippetsEnvVariables.json"""
 
-with open('snippetsEnvVariables.json') as json_file:
+config = os.environ['snippets_environment_variables']
+
+with open(config, 'r') as json_file:
     variables = json.load(json_file)
     bucket_var = variables['bucket']
     metadata_url_var = variables['metadata_url']
@@ -83,13 +85,14 @@ def bq_metadata_upload(gcs_file_name, dataset_id, table_name):
     load_job_config = bigquery.LoadJobConfig()
     load_job_config.source_format = bigquery.SourceFormat.CSV
     load_job_config.schema = [
-        bigquery.SchemaField('id', 'STRING'),
+        bigquery.SchemaField('job_id', 'STRING'),
         bigquery.SchemaField('name', 'STRING'),
         bigquery.SchemaField('campaign', 'STRING'),
         bigquery.SchemaField('category', 'STRING'),
         bigquery.SchemaField('url', 'STRING'),
         bigquery.SchemaField('body', 'STRING'),
-        bigquery.SchemaField('tags', 'STRING')
+        bigquery.SchemaField('tags', 'STRING'),
+        bigquery.SchemaField('id', 'STRING')
     ]
     load_job_config.quote_character = '"'
     load_job_config.allow_quoted_newlines = True

@@ -42,7 +42,7 @@ upload_to_BQ_table = PythonOperator(task_id='Ingest_data_into_BQ',
                                     python_callable=snippetsMetaDataLoadJob.bq_metadata_upload,
                                     dag=dag)
 
-download_telemetry_
+
 
 #5. Set up Dependencies
 retrieve_s3_file >> upload_to_BQ_table

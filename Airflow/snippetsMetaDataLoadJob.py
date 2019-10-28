@@ -79,13 +79,14 @@ def bq_metadata_upload():
     load_job_config = bigquery.LoadJobConfig()
     load_job_config.source_format = bigquery.SourceFormat.CSV
     load_job_config.schema = [
-        bigquery.SchemaField('id', 'STRING'),
+        bigquery.SchemaField('job_id', 'STRING'),
         bigquery.SchemaField('name', 'STRING'),
         bigquery.SchemaField('campaign', 'STRING'),
         bigquery.SchemaField('category', 'STRING'),
         bigquery.SchemaField('url', 'STRING'),
         bigquery.SchemaField('body', 'STRING'),
-        bigquery.SchemaField('tags', 'STRING')
+        bigquery.SchemaField('tags', 'STRING'),
+        bigquery.SchemaField('id', 'STRING')
     ]
     load_job_config.quote_character = '"'
     load_job_config.allow_quoted_newlines = True

@@ -20,6 +20,7 @@ with open(config, 'r') as json_file:
     variables = json.load(json_file)
     marketing_project_var = variables['marketing_project']
     telemetry_project_var = variables['telemetry_project']
+    telemetry_prod_project_var = variables['telemetry_prod_project']
 
 current_date = date.today()
 seven_days_ago = current_date - timedelta(7)
@@ -69,11 +70,11 @@ def calc_max_data_availability(project, dataset_id, table_name, date_field):
     job_config = bigquery.QueryJobConfig()
     sql = f"""
         SELECT
-            MAX({date_field}) AS max_date
+            MAX(EXTRACT(DATE FROM {date_field})) AS max_date
         FROM
             `{project}.{dataset_id}.{table_name}`
         WHERE
-        {date_field} > DATE("{seven_days_ago}")
+        EXTRACT(DATE FROM {date_field}) > DATE("{seven_days_ago}")
         """
     # Run the query
     read_query = client.query(
@@ -104,9 +105,9 @@ def load_adjusted_new_profiles(next_load_date, max_date_pull):
     job_config.destination = tableRef
     sql = f"""
         WITH newProfiles as (SELECT
-          submission,
+          EXTRACT(DATE FROM submission_timestamp) as submission,
           client_id,
-          CASE WHEN metadata.geo_country IS NULL THEN '' ELSE metadata.geo_country END as country,
+          CASE WHEN metadata.geo.country IS NULL THEN '' ELSE metadata.geo.country END as country,
           CASE WHEN environment.settings.attribution.source IS NULL THEN 'unknown' ELSE environment.settings.attribution.source END as source,
           CASE WHEN environment.settings.attribution.medium IS NULL THEN 'unknown' ELSE environment.settings.attribution.medium END as medium,
           CASE WHEN environment.settings.attribution.campaign IS NULL THEN 'unknown' ELSE environment.settings.attribution.campaign END as campaign,
@@ -123,36 +124,36 @@ def load_adjusted_new_profiles(next_load_date, max_date_pull):
             ELSE 'mozFunnel'
           END END AS funnelOrigin
         FROM
-          `moz-fx-data-derived-datasets.telemetry.telemetry_new_profile_parquet_v2`
+          `moz-fx-data-shared-prod.telemetry.new_profile`
             WHERE
-              submission = "{next_load_date}"
+              EXTRACT(DATE FROM submission_timestamp) = "{next_load_date}"
             GROUP BY 1,2,3,4,5,6,7,8,9),
             
         firstShutdown as (
         SELECT
-          submission_date_s3,
+          EXTRACT(DATE FROM submission_timestamp) as submission_date_s3,
           'firstShutdown' as tableOrigin,
           client_id as fs_client_id,
-          scalar_parent_startup_profile_selection_reason as profileSelectionReason
+          payload.processes.parent.scalars.startup_profile_selection_reason as profileSelectionReason
         FROM
-          `moz-fx-data-derived-datasets.telemetry.first_shutdown_summary_v4`
+          `moz-fx-data-shared-prod.telemetry.first_shutdown`
         WHERE
-          submission_date_s3 >= "{next_load_date}"
-          AND submission_date_s3 <= "{max_date_pull}"
+          EXTRACT (DATE FROM submission_timestamp) >= "{next_load_date}"
+          AND EXTRACT (DATE FROM submission_timestamp) <= "{max_date_pull}"
         GROUP BY 1,2,3,4
         ),
         
         mainSummary as (
         SELECT
-          submission_date_s3,
+          EXTRACT(DATE FROM submission_timestamp) as submission_date_s3,
           'mainSummary' as tableOrigin,
           client_id as ms_client_id,
-          scalar_parent_startup_profile_selection_reason as profileSelectionReason
+          payload.processes.parent.scalars.startup_profile_selection_reason as profileSelectionReason
         FROM
-          `moz-fx-data-derived-datasets.telemetry.main_summary_v4` 
+          `moz-fx-data-shared-prod.telemetry.main` 
         WHERE
-          submission_date_s3 >= "{next_load_date}"
-          AND submission_date_s3 <= "{max_date_pull}"
+          EXTRACT (DATE FROM submission_timestamp) >= "{next_load_date}"
+          AND EXTRACT (DATE FROM submission_timestamp) <= "{max_date_pull}"
         GROUP BY 1,2,3,4
         ),
         
@@ -252,8 +253,8 @@ def run_adjusted_new_profiles():
     # Find the most recent data that data is available
     read_project = telemetry_project_var
     read_dataset_id = 'telemetry'
-    read_table_name_1 = 'telemetry_new_profile_parquet_v2'
-    end_load_date = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_date')
+    read_table_name_1 = 'new_profile'
+    end_load_date = calc_max_data_availability(read_project, read_dataset_id, read_table_name_1, 'submission_timestamp')
 
     logging.info(f'{job_name}: Loading data up to and including {end_load_date}')
 
@@ -262,8 +263,8 @@ def run_adjusted_new_profiles():
     next_load_date = last_load_date + timedelta(1)
     next_load_date = datetime.date(next_load_date)
 
-    #next_load_date = date(2019, 10, 24)
-    #end_load_date = date(2019, 10, 24)
+    #next_load_date = date(2019, 11, 21)
+    #end_load_date = date(2019, 11, 21)
 
     while next_load_date <= end_load_date:
         max_date_pull = next_load_date + timedelta(1)

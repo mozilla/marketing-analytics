@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(m
 #2. Set Default Arguments
 default_args = {
     'owner': 'George Kaberere',
-    'start_date': datetime(2019,10,26),
+    'start_date': datetime(2019,11,7),
     #'end_date': datetime(2020,1,1),
     'depends_on_past': False,
     'email': ['gkaberere@mozilla.com'],
@@ -30,7 +30,7 @@ dag = DAG(
     'Create_Site_Metrics_Summary_Table',
     default_args=default_args,
     description='Aggregates daily moz.org key metrics and creates summary table for dashboards and reporting',
-    schedule_interval='15 15 * * *'
+    schedule_interval='30 16 * * *'
 )
 
 

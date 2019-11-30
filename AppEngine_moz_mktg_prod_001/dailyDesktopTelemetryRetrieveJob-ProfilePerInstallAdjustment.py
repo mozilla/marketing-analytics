@@ -14,7 +14,7 @@ job_name = 'telemetry_desktop_usage_metrics_retrieve'
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variables
-os.environ['config'] = f"""{os.environ['desktop_telem_variables_json']}desktop_telemetry_env_variables.json"""
+os.environ['config'] = f"""{os.environ['variables_path']}desktop_telemetry_env_variables.json"""
 
 config = os.environ['config']
 
@@ -496,8 +496,8 @@ def run_desktop_telemetry_retrieve():
 
     # Set dates required for loading new data
     last_load_date = datetime.strptime(last_load_date, "%Y%m%d")
-    #next_load_date = date(2019, 10, 1)
-    #end_load_date = date(2019, 10, 8)
+    #next_load_date = date(2019, 11, 12)
+    #end_load_date = date(2019, 11, 21)
     # TODO: When ready to run automatically remove manually set lines above
     next_load_date = last_load_date + timedelta(1)
     next_load_date = datetime.date(next_load_date)

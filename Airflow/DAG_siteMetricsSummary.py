@@ -8,6 +8,9 @@ import logging
 
 import siteMetricsSummaryTable
 import siteMetricsByLandingPageSummaryTable
+import siteMetricsByPageSummaryTable
+import blogsSiteMetricsByLandingPageSummaryTable
+import blogsSiteMetricsSummaryTable
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
@@ -30,7 +33,7 @@ dag = DAG(
     'Create_Site_Metrics_Summary_Table',
     default_args=default_args,
     description='Aggregates daily moz.org key metrics and creates summary table for dashboards and reporting',
-    schedule_interval='30 16 * * *'
+    schedule_interval='00 16 * * *'
 )
 
 
@@ -43,6 +46,17 @@ update_site_metrics_by_landing_page_table = PythonOperator(task_id='create_daily
                                     python_callable=siteMetricsByLandingPageSummaryTable.run_site_metrics_landing_page_update,
                                     dag=dag)
 
+update_site_metrics_by_page_table = PythonOperator(task_id='create_daily_summary_table_by_page',
+                                    python_callable=siteMetricsByPageSummaryTable.run_site_metrics_landing_page_update,
+                                    dag=dag)
+
+update_blog_metrics_table = PythonOperator(task_id='create_daily_summary_table_for_blog_property',
+                                    python_callable=blogsSiteMetricsSummaryTable.run_site_metrics_landing_page_update,
+                                    dag=dag)
+
+update_blog_metrics_by_landing_page_table = PythonOperator(task_id='create_blog_summary_table_by_landing_page',
+                                    python_callable=blogsSiteMetricsByLandingPageSummaryTable.run_site_metrics_landing_page_update,
+                                    dag=dag)
 
 
 #5. Set up Dependencies

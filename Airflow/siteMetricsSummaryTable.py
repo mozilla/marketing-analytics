@@ -27,7 +27,7 @@ def calc_last_load_date(dataset_id, table_name):
     SELECT
     FORMAT_DATE('%Y%m%d', max(date)) AS last_load_date
     FROM
-    `ga-mozilla-org-prod-001.{dataset_id}.{table_name}_*`
+    `ga-mozilla-org-prod-001.{dataset_id}.{table_name}`
     """
     # Run the query
     read_query = client.query(
@@ -52,12 +52,12 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
     while next_load_date < end_load_date:
         # Set dates required for loading new data
         next_load_date = datetime.strftime(next_load_date, '%Y%m%d')
+        end_load_date = datetime.strftime(end_load_date, '%Y%m%d')
         logging.info(f'Starting load for next load date: {next_load_date}')
         client = bigquery.Client(project='ga-mozilla-org-prod-001')
         load_dataset_id = dataset_id
         load_table_name = table_name
-        load_table_suffix = next_load_date
-        load_table_id = f'{load_table_name.lower()}_{load_table_suffix}'
+        load_table_id = f'{load_table_name.lower()}'
 
         # Configure load job
         dataset_ref = client.dataset(load_dataset_id)
@@ -65,7 +65,12 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
         load_job_config = bigquery.QueryJobConfig()  # load job call
         load_job_config.schema = [
             bigquery.SchemaField('date', 'DATE'),
+            bigquery.SchemaField('device_category', 'STRING'),
+            bigquery.SchemaField('operating_system', 'STRING'),
+            bigquery.SchemaField('browser', 'STRING'),
+            bigquery.SchemaField('language', 'STRING'),
             bigquery.SchemaField('country', 'STRING'),
+            bigquery.SchemaField('standardized_country_name', 'STRING'),
             bigquery.SchemaField('source', 'STRING'),
             bigquery.SchemaField('medium', 'STRING'),
             bigquery.SchemaField('campaign', 'STRING'),
@@ -73,104 +78,124 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
             bigquery.SchemaField('sessions', 'INTEGER'),
             bigquery.SchemaField('nonFXSessions', 'INTEGER'),
             bigquery.SchemaField('downloads', 'INTEGER'),
-            bigquery.SchemaField('nonFXDownloads', 'INTEGER'),
-            bigquery.SchemaField('countryCleaned', 'STRING')
+            bigquery.SchemaField('nonFXDownloads', 'INTEGER')
         ]  # Define schema
         load_job_config.time_partitioning = bigquery.TimePartitioning(
             type_=bigquery.TimePartitioningType.DAY,
-            field='date',
-        )
+            field='date')
+        load_job_config.clustering_fields = ['country', 'browser', 'source', 'medium']
         load_job_config.write_disposition = 'WRITE_APPEND'  # Options are WRITE_TRUNCATE, WRITE_APPEND, WRITE_EMPTY
         load_job_config.destination = table_ref
         sql = f"""
         WITH parameters as(
         SELECT
-          '{load_table_suffix}' as startDate,
-          '{load_table_suffix}' as endDate
+          '{next_load_date}' as startDate,
+          '{next_load_date}' as endDate
         ),
         
         sessionsTable as (
           SELECT
             PARSE_DATE('%Y%m%d', date) as date,
-            CASE WHEN country IS NULL THEN '' ELSE country END as country,
-            CASE WHEN source IS NULL THEN '' ELSE source END as source,
-            CASE WHEN medium IS NULL THEN '' ELSE medium END as medium,
-            CASE WHEN campaign IS NULL THEN '' ELSE campaign END as campaign,
-            CASE WHEN content IS NULL THEN '' ELSE content END as content,
+            deviceCategory,
+            operatingSystem,
+            browser,
+            language,
+            country,
+            source,
+            medium,
+            campaign,
+            content,
             SUM(sessions) as sessions,
             SUM(CASE WHEN browser != 'Firefox' THEN sessions ELSE 0 END) as nonFXSessions
             FROM(
               SELECT
                 date,
+                visitIdentifier,
+                deviceCategory,
+                operatingSystem,
+                browser,
+                language,
                 country,
                 source,
                 medium,
                 campaign,
                 content,
-                browser,
                 COUNT(DISTINCT visitIdentifier) as sessions
               FROM(
                   SELECT
                     date AS date,
                     CONCAT(CAST(fullVisitorId AS string),CAST(visitId AS string)) as visitIdentifier,
+                    device.deviceCategory,
+                    device.operatingSystem,
+                    device.browser,
+                    device.language,
                     geoNetwork.country as country,
                     trafficSource.source as source,
                     trafficSource.medium as medium,
                     trafficSource.campaign as campaign,
-                    trafficSource.adcontent as content,
-                    device.browser as browser
+                    trafficSource.adcontent as content
                   FROM
                     `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
                     UNNEST (hits) AS hits
                   WHERE
                     _TABLE_SUFFIX >= (SELECT parameters.startDate from parameters)
-                    AND _TABLE_SUFFIX <= (SELECT parameters.startDate from parameters)
+                    AND _TABLE_SUFFIX <= (SELECT parameters.endDate from parameters)
                     AND totals.visits = 1
                   GROUP BY
-                    date,visitIdentifier, country, source, medium, campaign, content, browser)
+                    date,visitIdentifier, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content)
               GROUP BY
-                date, country, source, medium, campaign, content,browser)
-          GROUP BY date, country, source, medium, campaign, content),
+                date, visitIdentifier, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content)
+          GROUP BY date, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content),
         
         
         downloadsTable as(
         SELECT
           PARSE_DATE('%Y%m%d', date) as date,
-          CASE WHEN country IS NULL THEN '' ELSE country END as country,
-          CASE WHEN source IS NULL THEN '' ELSE source END as source,
-          CASE WHEN medium IS NULL THEN '' ELSE medium END as medium,
-          CASE WHEN campaign IS NULL THEN '' ELSE campaign END as campaign,
-          CASE WHEN content IS NULL THEN '' ELSE content END as content,
+          deviceCategory,
+          operatingSystem,
+          browser,
+          language,
+          country,
+          source,
+          medium,
+          campaign,
+          content,
           SUM(IF(downloads > 0,1,0)) as downloads,
           SUM(IF(downloads > 0 AND browser != 'Firefox',1,0)) as nonFXDownloads
-        FROM (SELECT
-          date AS date,
-          fullVisitorId as visitorId,
-          visitNumber as visitNumber,
-          geoNetwork.country as country,
-          trafficSource.source as source,
-          trafficSource.medium as medium,
-          trafficSource.campaign as campaign,
-          trafficSource.adcontent as content,
-          device.browser as browser,
-          SUM(IF (hits.eventInfo.eventAction = "Firefox Download",1,0)) as downloads
-        FROM
-          `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
-          UNNEST (hits) AS hits
-        WHERE
-          _TABLE_SUFFIX >= (SELECT parameters.startDate from parameters)
-          AND _TABLE_SUFFIX <= (SELECT parameters.startDate from parameters)
-          AND hits.type = 'EVENT'
-          AND hits.eventInfo.eventCategory IS NOT NULL
-          AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"
-        GROUP BY
-          date,visitorID, visitNumber, country, source, medium, campaign, content, browser)
-        GROUP BY date, country, source, medium, campaign, content
-        ),
+        FROM (
+          SELECT
+            date AS date,
+            CONCAT(CAST(fullVisitorId AS string),CAST(visitId AS string)) as visitIdentifier,
+            device.deviceCategory,
+            device.operatingSystem,
+            device.browser,
+            device.language,
+            geoNetwork.country as country,
+            trafficSource.source as source,
+            trafficSource.medium as medium,
+            trafficSource.campaign as campaign,
+            trafficSource.adcontent as content,
+            SUM(IF (hits.eventInfo.eventAction = "Firefox Download",1,0)) as downloads
+          FROM
+            `ga-mozilla-org-prod-001.65789850.ga_sessions_*`,
+            UNNEST (hits) AS hits
+          WHERE
+            _TABLE_SUFFIX >= (SELECT parameters.startDate from parameters)
+            AND _TABLE_SUFFIX <= (SELECT parameters.endDate from parameters)
+            AND hits.type = 'EVENT'
+            AND hits.eventInfo.eventCategory IS NOT NULL
+            AND hits.eventInfo.eventLabel LIKE "Firefox for Desktop%"
+          GROUP BY
+            date,visitIdentifier, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content)
+        GROUP BY date, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content),
         
         siteData as (
         SELECT
           sessionsTable.date,
+          sessionsTable.deviceCategory,
+          sessionsTable.operatingSystem,
+          sessionsTable.browser,
+          sessionsTable.language,
           sessionsTable.country,
           sessionsTable.source,
           sessionsTable.medium,
@@ -186,28 +211,42 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
           downloadsTable
         ON
           sessionsTable.date = downloadsTable.date
+          AND sessionsTable.deviceCategory = downloadsTable.deviceCategory
+          AND sessionsTable.operatingSystem = downloadsTable.operatingSystem
+          AND sessionsTable.browser = downloadsTable.browser
+          AND sessionsTable.language = downloadsTable.language
           AND sessionsTable.country = downloadsTable.country
           AND sessionsTable.source = downloadsTable.source
           AND sessionsTable.medium = downloadsTable.medium
           AND sessionsTable.campaign = downloadsTable.campaign
-          AND sessionsTable.content = downloadsTable.content
+          AND sessionsTable.content = downloadstable.content
         GROUP BY
-          date, country, source, medium, campaign, content
-        ),
+          date, deviceCategory, operatingSystem, browser, language, country, source, medium, campaign, content
+        )
         
-        cleanedSiteData as (
+        
         SELECT
-          siteData.*,
-          standardizedCountryList.standardizedCountry as countryCleaned
+          date,
+          deviceCategory as device_category,
+          operatingSystem as operating_system,
+          browser,
+          language,
+          country,
+          standardizedCountryList.standardizedCountry as standardized_country_name,
+          source,
+          medium,
+          campaign, 
+          content,
+          sessions,
+          nonFXSessions,
+          downloads,
+          nonFXDownloads
         FROM
           siteData
         LEFT JOIN
           `lookupTables.standardizedCountryList` as standardizedCountryList
         ON
           siteData.country = standardizedCountryList.rawCountry
-        )
-        
-        SELECT * from cleanedSiteData
         """
 
         # Run Load Job
@@ -221,8 +260,6 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
         query_job.result()  # Waits for the query to finish
         logging.info(f'Query results loaded to table {table_ref.path}')
 
-        # Set next_load_date
-        next_load_date = datetime.strptime(next_load_date, '%Y%m%d') + timedelta(1)
     return
 
 
@@ -240,11 +277,30 @@ def run_site_metrics_update():
     # Load most recent data
     load_dataset_id = read_dataset_id
     load_table_name = read_table_name
-    load_new_data(load_dataset_id, load_table_name, next_load_date, end_load_date)
+    while next_load_date <= end_load_date:
+        load_new_data(load_dataset_id, load_table_name, next_load_date, end_load_date)
+        # Set next load date
+        next_load_date = next_load_date + timedelta(days=1)
     return
+
+
+def initiate_table():
+    read_dataset_id = 'desktop'
+    read_table_name = 'website_metrics'
+    current_date = datetime.now()
+    current_date = datetime.date(current_date)
+
+    next_load_date = current_date
+    end_load_date = datetime.strptime("20200317", '%Y%m%d')
+    end_load_date = datetime.date(end_load_date)
+
+    load_new_data(read_dataset_id, read_table_name, next_load_date, end_load_date)
+
 
 
 if __name__ == '__main__':
     run_site_metrics_update()
+
+
 
 

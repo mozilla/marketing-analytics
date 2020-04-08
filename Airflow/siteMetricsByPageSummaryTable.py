@@ -518,7 +518,7 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
     return
 
 
-def run_site_metrics_landing_page_update():
+def run_site_metrics_update():
     # Find the last date when data was loaded into the table
     read_dataset_id = 'desktop'
     read_table_name = 'website_page_metrics'
@@ -550,7 +550,7 @@ def initialize_table():
 
 
 if __name__ == '__main__':
-    run_site_metrics_landing_page_update()
+    run_site_metrics_update()
 
 
 

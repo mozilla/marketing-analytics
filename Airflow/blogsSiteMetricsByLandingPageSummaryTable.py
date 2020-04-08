@@ -10,7 +10,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
 # Set environment variable to authenticate using service account
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
+#os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = f"""{os.environ['variables_path']}moz-mktg-prod-001-app-engine-GAMozillaProdAccess.json"""
 
 def calc_last_load_date(dataset_id, table_name):
     '''
@@ -137,7 +137,7 @@ def load_new_data(dataset_id, table_name, next_load_date, end_load_date):
                 WHEN lower(blog) IN (
                 'blog','addons','security','opendesign','nnethercote','thunderbird',
                 'community','l10n','theden','webrtc','berlin','webdev','services','tanvi','laguaridadefirefox','ux',
-                'fxtesteng','foundation-archive','nfroyd','sumo','javascript','page') THEN lower(blog)
+                'fxtesteng','foundation-archive','nfroyd','sumo','javascript','page', 'data') THEN lower(blog)
                 ELSE 'other' END as blog,
               CASE
                 WHEN blog = "firefox" AND pagePathLevel2 IN ('ru', 'pt-br', 'pl', 'it', 'id', 'fr', 'es', 'de') THEN pagePathLevel2
@@ -309,7 +309,7 @@ def initiate_table():
     current_date = datetime.date(current_date)
 
     next_load_date = current_date
-    end_load_date = datetime.strptime("20200314", '%Y%m%d')
+    end_load_date = datetime.strptime("20200406", '%Y%m%d')
     end_load_date = datetime.date(end_load_date)
 
     load_new_data(read_dataset_id, read_table_name, next_load_date, end_load_date)

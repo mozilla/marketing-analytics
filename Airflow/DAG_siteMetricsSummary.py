@@ -47,15 +47,15 @@ update_site_metrics_by_landing_page_table = PythonOperator(task_id='create_daily
                                     dag=dag)
 
 update_site_metrics_by_page_table = PythonOperator(task_id='create_daily_summary_table_by_page',
-                                    python_callable=siteMetricsByPageSummaryTable.run_site_metrics_landing_page_update,
+                                    python_callable=siteMetricsByPageSummaryTable.run_site_metrics_update,
                                     dag=dag)
 
 update_blog_metrics_table = PythonOperator(task_id='create_daily_summary_table_for_blog_property',
-                                    python_callable=blogsSiteMetricsSummaryTable.run_site_metrics_landing_page_update,
+                                    python_callable=blogsSiteMetricsSummaryTable.run_site_metrics_update,
                                     dag=dag)
 
 update_blog_metrics_by_landing_page_table = PythonOperator(task_id='create_blog_summary_table_by_landing_page',
-                                    python_callable=blogsSiteMetricsByLandingPageSummaryTable.run_site_metrics_landing_page_update,
+                                    python_callable=blogsSiteMetricsByLandingPageSummaryTable.run_site_metrics_update,
                                     dag=dag)
 
 

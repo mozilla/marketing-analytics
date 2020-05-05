@@ -11,6 +11,7 @@ import siteMetricsByLandingPageSummaryTable
 import siteMetricsByPageSummaryTable
 import blogsSiteMetricsByLandingPageSummaryTable
 import blogsSiteMetricsSummaryTable
+import eventsByPageTable
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s: %(message)s')
 
@@ -56,6 +57,10 @@ update_blog_metrics_table = PythonOperator(task_id='create_daily_summary_table_f
 
 update_blog_metrics_by_landing_page_table = PythonOperator(task_id='create_blog_summary_table_by_landing_page',
                                     python_callable=blogsSiteMetricsByLandingPageSummaryTable.run_site_metrics_update,
+                                    dag=dag)
+
+update_blog_metrics_by_landing_page_table = PythonOperator(task_id='create_events_by_page_table',
+                                    python_callable=eventsByPageTable.run_site_metrics_update,
                                     dag=dag)
 
 
